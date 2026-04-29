@@ -1,6 +1,6 @@
 x_left: 0.
 x_right: 100.
 x_step: 1.
-z_step: 10.
+z_step: 8.
 Q_left: 1000.
-Qm_left: 100.
+Qm_left: 10.
