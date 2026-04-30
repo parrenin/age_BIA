@@ -174,11 +174,11 @@ for i in range(1, len(x)-1):
 
 trajs = []
 # Trajectories from the upstream border
-for k in np.arange(H[0]-z_step, 0., -z_step):
+for k in np.arange(S[0]-z_step, B[0], -z_step):
     xx = np.array([x[0]])
     zz = np.array([k])
     age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
-    zeta = zz/H[0]
+    zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
     traj = {'x': xx, 'z': zz, 'age': age, 'out': None}
