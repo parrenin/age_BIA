@@ -259,7 +259,39 @@ for i in range(0, len(trajs), step_traj):
     z_list.append(traj['z'])
     age_list.append(traj['age'])
 
-# Concatenation in unique arrays for age plots
+# Creation of domains and unformities
+
+mat_x = np.array([trajs[0]['x']])
+mat_z = np.array([trajs[0]['z']])
+mat_age = np.array([trajs[0]['age']])
+if len(index_uncomf) ==0:
+    end = len(trajs)
+else:
+    end = index_uncomf[0]
+for i in range(1, end):
+#    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
+    mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
+    mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
+    mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
+domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age}]
+uncomf_list = []
+
+for k in range(len(index_uncomf)):
+    traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
+    uncomf_list.append(traj_z)
+    mat_x = np.array([trajs[index_uncomf[k]]['x']])
+    mat_z = np.array([trajs[index_uncomf[k]]['z']])
+    mat_age = np.array([trajs[index_uncomf[k]]['age']])
+    if k == len(index_uncomf)-1:
+        end = len(trajs)
+    else:
+        end = index_uncomf[k+1]
+    for i in range(index_uncomf[k]+1, end):
+    #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
+        mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
+        mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
+        mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
+    domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age})
 
 # ---------------------
 # Trajectories figure
@@ -376,38 +408,15 @@ ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
 
-mat_x = np.array([trajs[0]['x']])
-mat_z = np.array([trajs[0]['z']])
-mat_age = np.array([trajs[0]['age']])
-if len(index_uncomf) ==0:
-    end = len(trajs)
-else:
-    end = index_uncomf[0]
-for i in range(1, end):
-#    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
-    mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
-    mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
-    mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-ax2.contourf(mat_x, mat_z, mat_age, levels=1000, cmap='plasma', norm=norm)
-cp = ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=1000,
+                 cmap='plasma', norm=norm)
+    cp = ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k',
+                     norm=norm)
 
-for k in range(len(index_uncomf)):
-    traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
-    ax2.plot(x, traj_z, label='Discontinuities', color='k', linewidth=4., linestyle='--')
-    mat_x = np.array([trajs[index_uncomf[k]]['x']])
-    mat_z = np.array([trajs[index_uncomf[k]]['z']])
-    mat_age = np.array([trajs[index_uncomf[k]]['age']])
-    if k == len(index_uncomf)-1:
-        end = len(trajs)
-    else:
-        end = index_uncomf[k+1]
-    for i in range(index_uncomf[k]+1, end):
-    #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
-        mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
-        mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
-        mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-        ax2.contourf(mat_x, mat_z, mat_age, levels=1000, cmap='plasma', norm=norm)
-        ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
+for uncomf in uncomf_list:
+    ax2.plot(x, uncomf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
     
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
