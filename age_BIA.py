@@ -8,6 +8,7 @@ Ceci est un script temporaire.
 # TODO: compute and plot surface velocities
 # TODO: plot Y
 # TODO: plot isochrones and age as contour and contourf
+# TODO: implement temporal factor
 
 import sys
 import numpy as np
@@ -78,6 +79,7 @@ z_step = 5.
 Q_left = 1000.
 Qm_left = 100.
 fig_format = 'pdf'
+fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -169,25 +171,34 @@ for i in range(1, len(x)-1):
 # --------------------------------------
 
 trajs = []
-for k in np.arange(H[0], 0., -z_step):
+for k in np.arange(H[0]-z_step, 0., -z_step):
     xx = np.array([x[0]])
     zz = np.array([k])
     age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
     zeta = zz/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
-    traj = {'x': xx, 'z': zz, 'age': age}
+    traj = {'x': xx, 'z': zz, 'age': age, 'out': None}
     j = 1
-    while j < len(x) and Q[j] >= qq and Qm[j] <= qq :
+    while j < len(x) :
         traj['x'] = np.append(traj['x'], x[j])
-        omega = (qq-Qm[j])/(Q[j]-Qm[j])
-        zeta = fct_zeta(omega, p[j])
-        traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
-        ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
-        ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
-        ux = (ux1 + ux2 ) / 2                           # Can we do better here?
-        dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
-        traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+        if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
+            omega = (qq-Qm[j])/(Q[j]-Qm[j])
+            zeta = fct_zeta(omega, p[j])
+            traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
+            ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
+            ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
+            ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
+            traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+        elif Q[j] < qq or traj['out'] == 'surf':
+            traj['z'] = np.append(traj['z'], np.nan)
+            traj['age'] = np.append(traj['age'], np.nan)
+            traj['out'] = 'surf'
+        elif Qm[j] > qq or traj['out'] == 'bed':
+            traj['z'] = np.append(traj['z'], np.nan)
+            traj['age'] = np.append(traj['age'], np.nan)
+            traj['out'] = 'bed'
         j += 1
     trajs.insert(0, traj)
 index_uncomf = []
@@ -196,25 +207,44 @@ for k in range(len(accu_starts)):
         index_uncomf.append(len(trajs))
     istart = accu_starts[k]
     iend = accu_ends[k]
+    print(istart, iend)
     for i in range(istart, iend+1):
-        xx = np.array([x[i]])
-        zz = np.array([S[i]])
-        age = np.array([0])
-        traj = {'x':xx, 'z':zz, 'age': age}
+        xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
+        zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
+        age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
+        traj = {'x':xx, 'z':zz, 'age': age, 'out': None}
         j = i+1
-        while j < len(x) and Q[j] >= Q[i] and Qm[j] <= Q[i] :
+        while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])
-            omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
-            zeta = fct_zeta(omega, p[j])
-            traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
-            ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
-            ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
-            ux = (ux1 + ux2 ) / 2                           # Can we do better here?
-            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
-            traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+            if Q[j] >= Q[i] and Qm[j] <= Q[i] and traj['out'] == None :
+                omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
+                zeta = fct_zeta(omega, p[j])
+                traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
+                ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
+                ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
+                ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
+                traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+            elif Q[j] < qq or traj['out'] == 'surf':
+                traj['z'] = np.append(traj['z'], np.nan)
+                traj['age'] = np.append(traj['age'], np.nan)
+                traj['out'] = 'surf'
+            elif Qm[j] > qq or traj['out'] == 'bed':
+                traj['z'] = np.append(traj['z'], np.nan)
+                traj['age'] = np.append(traj['age'], np.nan)
+                traj['out'] = 'bed'
             j += 1
         trajs.append(traj)
-        
+  
+print('Before creating figures:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
+  
+    
+
+# ----------------------------------------
+# Plotting of figures
+# ----------------------------------------
+
 # Concatenation in unique arrays for plot
 x_list = []
 z_list = []
@@ -224,13 +254,9 @@ for traj in trajs:
     z_list.append(traj['z'])
     age_list.append(traj['age'])
     
-
-# ----------------------------------------
-# Plotting of trajectories
-# ----------------------------------------
-
-
+# ---------------------
 # Trajectories figure
+# ---------------------
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
@@ -244,13 +270,14 @@ for traj in trajs:
     ax2.plot(traj['x'], traj['z'], color='k', linestyle='--')
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
-plt.savefig(datadir+'stream_lines_x_z.'+fig_format,
+plt.savefig(datadir+'trajectories_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
 
-
-# Age figure
+# ---------------------------
+# Color trajectories figure
+# ---------------------------
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
@@ -267,20 +294,83 @@ norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
-for x, z, age in zip(x_list, z_list, age_list):
+for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
-    points = np.array([x, z]).T.reshape(-1, 1, 2)
+    points = np.array([xx, zz]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
     # Créer une LineCollection pour cette ligne
     lc = LineCollection(segments, cmap='plasma', norm=norm)
-    lc.set_array(age)  # Associer les valeurs z aux segments
+    lc.set_array(aa)  # Associer les valeurs z aux segments
     lc.set_linewidth(2)
     ax2.add_collection(lc)
-    
+
 for k in range(len(index_uncomf)):
     traj = trajs[index_uncomf[k]]
-    ax2.plot(traj['x'], traj['z'], label='Uncomformities', color='k', linewidth=4., linestyle='--')
+    ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+
+ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_ylabel(r'$z$ (m)', fontsize=19)
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
+sm.set_array([])
+plt.colorbar(sm, ax=ax2, label='age')
+
+plt.savefig(datadir+'trajectories_color_x_z.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+# -----------
+# Age figure
+# -----------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+age_min = 0.
+age_max = max(max(age) for age in age_list)
+linthresh = age_max/10.  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
+norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
+levels_iso = np.array(fig_age_iso)
+
+ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
+
+mat_x = np.array([trajs[0]['x']])
+mat_z = np.array([trajs[0]['z']])
+mat_age = np.array([trajs[0]['age']])
+for i in range(1, index_uncomf[0]):
+#    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
+    mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
+    mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
+    mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
+ax2.contourf(mat_x, mat_z, mat_age, levels=100, cmap='plasma', norm=norm)
+ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
+
+for k in range(len(index_uncomf)):
+    traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
+    ax2.plot(x, traj_z, label='Discontinuities', color='k', linewidth=4., linestyle='--')
+    mat_x = np.array([trajs[index_uncomf[k]]['x']])
+    mat_z = np.array([trajs[index_uncomf[k]]['z']])
+    mat_age = np.array([trajs[index_uncomf[k]]['age']])
+    if k == len(index_uncomf)-1:
+        end = len(trajs)
+    else:
+        end = index_uncomf[k+1]
+    for i in range(index_uncomf[k]+1, end):
+    #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
+        mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
+        mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
+        mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
+        ax2.contourf(mat_x, mat_z, mat_age, levels=100, cmap='plasma', norm=norm)
+        ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
+    
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
@@ -293,6 +383,8 @@ plt.colorbar(sm, ax=ax2, label='age')
 plt.savefig(datadir+'age_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
+
+
 
 # Program execution time
 MESSAGE = 'Program execution time: '+str(time.perf_counter()-START_TIME)+' s.'
