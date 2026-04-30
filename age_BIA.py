@@ -80,6 +80,7 @@ Q_left = 1000.
 Qm_left = 100.
 fig_format = 'pdf'
 fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
+step_traj = 5
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -171,6 +172,7 @@ for i in range(1, len(x)-1):
 # --------------------------------------
 
 trajs = []
+# Trajectories from the upstream border
 for k in np.arange(H[0]-z_step, 0., -z_step):
     xx = np.array([x[0]])
     zz = np.array([k])
@@ -202,6 +204,7 @@ for k in np.arange(H[0]-z_step, 0., -z_step):
         j += 1
     trajs.insert(0, traj)
 index_uncomf = []
+# Trajectories from the surface
 for k in range(len(accu_starts)):
     if k>0:
         index_uncomf.append(len(trajs))
@@ -249,7 +252,8 @@ print('Before creating figures:',
 x_list = []
 z_list = []
 age_list = []
-for traj in trajs:
+for i in range(0, len(trajs), step_traj):
+    traj = trajs[i]
     x_list.append(traj['x'])
     z_list.append(traj['z'])
     age_list.append(traj['age'])
@@ -274,6 +278,9 @@ plt.savefig(datadir+'trajectories_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
+
+print('After trajectories figure:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
 
 # ---------------------------
 # Color trajectories figure
@@ -321,6 +328,10 @@ plt.savefig(datadir+'trajectories_color_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
+print('After color trajectories figure:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
+
+
 # -----------
 # Age figure
 # -----------
@@ -351,7 +362,7 @@ for i in range(1, index_uncomf[0]):
     mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
     mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
 ax2.contourf(mat_x, mat_z, mat_age, levels=100, cmap='plasma', norm=norm)
-ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
+cp = ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
 
 for k in range(len(index_uncomf)):
     traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
@@ -378,12 +389,15 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
-plt.colorbar(sm, ax=ax2, label='age')
+cb = plt.colorbar(sm, ax=ax2, label='age')
+cb.add_lines(cp)
 
 plt.savefig(datadir+'age_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
+print('After age figure:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
 
 
 # Program execution time
