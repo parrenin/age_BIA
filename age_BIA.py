@@ -5,7 +5,6 @@
 Ceci est un script temporaire.
 """
 
-# TODO: compute and plot surface velocities
 # TODO: plot Y
 # TODO: implement temporal factor
 
@@ -80,6 +79,7 @@ Qm_left = 100.
 fig_format = 'pdf'
 fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
+scaling_age = 10.
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -229,11 +229,11 @@ for k in range(len(accu_starts)):
                 ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
-            elif Q[j] < qq or traj['out'] == 'surf':
+            elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z'] = np.append(traj['z'], np.nan)
                 traj['age'] = np.append(traj['age'], np.nan)
                 traj['out'] = 'surf'
-            elif Qm[j] > qq or traj['out'] == 'bed':
+            elif Qm[j] > Q[i] or traj['out'] == 'bed':
                 traj['z'] = np.append(traj['z'], np.nan)
                 traj['age'] = np.append(traj['age'], np.nan)
                 traj['out'] = 'bed'
@@ -249,7 +249,7 @@ print('Before creating figures:',
 # Plotting of figures
 # ----------------------------------------
 
-# Concatenation in unique arrays for plot
+# Concatenation in lists for trajectories plots
 x_list = []
 z_list = []
 age_list = []
@@ -258,7 +258,9 @@ for i in range(0, len(trajs), step_traj):
     x_list.append(traj['x'])
     z_list.append(traj['z'])
     age_list.append(traj['age'])
-    
+
+# Concatenation in unique arrays for age plots
+
 # ---------------------
 # Trajectories figure
 # ---------------------
@@ -311,7 +313,7 @@ ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(max(age) for age in age_list)
-linthresh = age_max/10.  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
+linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
@@ -338,7 +340,7 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
-plt.colorbar(sm, ax=ax2, label='age')
+plt.colorbar(sm, ax=ax2, label='age (yr)')
 
 plt.savefig(datadir+'trajectories_color_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
@@ -366,7 +368,7 @@ ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(max(age) for age in age_list)
-linthresh = age_max/10.  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
+linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
 
@@ -377,12 +379,16 @@ ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 mat_x = np.array([trajs[0]['x']])
 mat_z = np.array([trajs[0]['z']])
 mat_age = np.array([trajs[0]['age']])
-for i in range(1, index_uncomf[0]):
+if len(index_uncomf) ==0:
+    end = len(trajs)
+else:
+    end = index_uncomf[0]
+for i in range(1, end):
 #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
     mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
     mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
     mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-ax2.contourf(mat_x, mat_z, mat_age, levels=100, cmap='plasma', norm=norm)
+ax2.contourf(mat_x, mat_z, mat_age, levels=1000, cmap='plasma', norm=norm)
 cp = ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
 
 for k in range(len(index_uncomf)):
@@ -400,7 +406,7 @@ for k in range(len(index_uncomf)):
         mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
         mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
         mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-        ax2.contourf(mat_x, mat_z, mat_age, levels=100, cmap='plasma', norm=norm)
+        ax2.contourf(mat_x, mat_z, mat_age, levels=1000, cmap='plasma', norm=norm)
         ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k', norm=norm)
     
 
@@ -410,7 +416,7 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, label='age')
+cb = plt.colorbar(sm, ax=ax2, label='age (yr)')
 cb.add_lines(cp)
 
 plt.savefig(datadir+'age_x_z.'+fig_format,
