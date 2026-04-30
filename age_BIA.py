@@ -7,7 +7,6 @@ Ceci est un script temporaire.
 
 # TODO: compute and plot surface velocities
 # TODO: plot Y
-# TODO: plot isochrones and age as contour and contourf
 # TODO: implement temporal factor
 
 import sys
@@ -113,9 +112,9 @@ x_H, H_measure = np.loadtxt(datadir+'thickness.txt', unpack=True)
 x_Y, Y_measure = np.loadtxt(datadir+'tube_width.txt', unpack=True)
 
 
-# --------------------
-# Interpolation
-# --------------------
+# --------------------------
+# Interpolation and fluxes
+# --------------------------
 
 x = np.arange(x_left, x_right+x_step, x_step)
 
@@ -153,6 +152,8 @@ Qm = np.cumsum(dQmdx)
 
 mu = Qm / (Q - Qm)
 QH = Q - Qm
+
+surf_vel = Q / Y * fct_domega_dzeta(1., p) / H
 
 # ------------------------------------
 # Determination of accumulation areas
@@ -268,10 +269,20 @@ ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
 
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_vel, color='r', linewidth=2)
+ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
+
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
-for traj in trajs:
-    ax2.plot(traj['x'], traj['z'], color='k', linestyle='--')
+for xx, zz in zip(x_list, z_list):
+    ax2.plot(xx, zz, color='k')
+    
+for k in range(len(index_uncomf)):
+    traj = trajs[index_uncomf[k]]
+    ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 plt.savefig(datadir+'trajectories_x_z.'+fig_format,
@@ -292,6 +303,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_vel, color='r', linewidth=2)
+ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(max(age) for age in age_list)
@@ -342,6 +358,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_vel, color='r', linewidth=2)
+ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(max(age) for age in age_list)
