@@ -84,6 +84,9 @@ fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
 scaling_age = 10.
 ic = {}
+color_core = 'r'
+lw_core = 2
+ls_core = 'dashed'
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -177,16 +180,22 @@ for i in range(1, len(x)-1):
 # --------------------------------------
 
 trajs = []
+profs = []
 # Trajectories from the upstream border
 zz_start = B[0] + ((S[0] - B[0]) % z_step)
-for k in np.arange(zz_start, S[0], z_step):
+for z in np.arange(zz_start, S[0], z_step):
     xx = np.array([x[0]])
-    zz = np.array([k])
+    zz = np.array([z])
     age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
     zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
     traj = {'x': xx, 'z': zz, 'age': age, 'out': None}
+    try:
+        profs[0]['z'] = np.append(profs[0]['z'], z)
+        profs[0]['age'] = np.append(profs[0]['age'], age[0])
+    except:
+        profs = [{'z': zz, 'age': age}]
     j = 1
     while j < len(x) :
         traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
@@ -199,6 +208,11 @@ for k in np.arange(zz_start, S[0], z_step):
             ux = (ux1 + ux2 ) / 2                           # Can we do better here?
             dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
             traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+            try:
+                profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
+                profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+            except:
+                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1]})
         elif Q[j] < qq or traj['out'] == 'surf':
             traj['z'] = np.append(traj['z'], np.nan)
             traj['age'] = np.append(traj['age'], np.nan)
@@ -234,6 +248,11 @@ for k in range(len(accu_starts)):
                 ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+                try:
+                    profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
+                    profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+                except:
+                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1]})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z'] = np.append(traj['z'], np.nan)
                 traj['age'] = np.append(traj['age'], np.nan)
@@ -447,12 +466,40 @@ sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, label='age (yr)')
 cb.add_lines(cp)
 
+
+for name in ic:
+    ic[name]['XX'] = ic[name]['x'] * np.ones(2)
+    ic[name]['S'] = np.interp(ic[name]['x'], x, S)
+    ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
+    ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+50), ha='center',
+                 va='bottom', color=color_core)
+
 plt.savefig(datadir+'age_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
 print('After age figure:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
+
+
+# ----------------------------
+# ice cores figures
+# ----------------------------
+
+for name in ic:
+    ii = np.argmax(x[x <= ic[name]['x']]) # FIXME: check if outside and interpolate
+    fig, ax = plt.subplots(figsize=(10, 10))
+    plt.title('ice core '+name+' age scale')
+    ax.plot(profs[ii]['age'], profs[ii]['z'])
+    ax.set_xlabel('age (yr)', fontsize=19)
+    ax.set_ylabel('z (m)', fontsize=19) # TODO: right axis with depth
+    ax.set_xlim(left=0)
+    ax.set_ylim(top=S[ii], bottom=B[ii])
+    plt.savefig(datadir+name+'_ice_core.'+fig_format,
+                    format=fig_format, bbox_inches='tight')
+    plt.close()
 
 
 # Program execution time

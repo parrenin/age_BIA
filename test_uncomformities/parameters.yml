@@ -9,3 +9,4 @@ step_traj: 5
 ic:
     "IC1":
         "x": 80.  # X coordinate of the drilling, in km
+        "max_depth": 1000.
