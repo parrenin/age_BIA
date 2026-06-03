@@ -1,9 +1,9 @@
 x_left: 0.
 x_right: 12.
 x_step: 0.1
-z_step: 5.
-Q_left: 610.
-Qm_left: 6.
+z_step: 10.
+Q_left: 600.
+Qm_left: 0.
 fig_age_iso: [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj: 5
 scaling_age: 100.

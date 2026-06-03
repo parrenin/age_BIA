@@ -7,6 +7,9 @@ Ceci est un script temporaire.
 
 # TODO: plot Y
 # TODO: implement temporal factor
+# TODO: Calculate and display age at surface
+# TODO: exact formula for the age increase
+# TODO: calculate quantities for ice cores (age, origin, etc.)
 
 import sys
 import numpy as np
@@ -80,6 +83,7 @@ fig_format = 'pdf'
 fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
 scaling_age = 10.
+ic = {}
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -174,7 +178,8 @@ for i in range(1, len(x)-1):
 
 trajs = []
 # Trajectories from the upstream border
-for k in np.arange(S[0]-z_step, B[0], -z_step):
+zz_start = B[0] + ((S[0] - B[0]) % z_step)
+for k in np.arange(zz_start, S[0], z_step):
     xx = np.array([x[0]])
     zz = np.array([k])
     age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
@@ -184,7 +189,7 @@ for k in np.arange(S[0]-z_step, B[0], -z_step):
     traj = {'x': xx, 'z': zz, 'age': age, 'out': None}
     j = 1
     while j < len(x) :
-        traj['x'] = np.append(traj['x'], x[j])
+        traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
         if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
             omega = (qq-Qm[j])/(Q[j]-Qm[j])
             zeta = fct_zeta(omega, p[j])
@@ -203,7 +208,7 @@ for k in np.arange(S[0]-z_step, B[0], -z_step):
             traj['age'] = np.append(traj['age'], np.nan)
             traj['out'] = 'bed'
         j += 1
-    trajs.insert(0, traj)
+    trajs.append(traj)
 index_uncomf = []
 # Trajectories from the surface
 for k in range(len(accu_starts)):
@@ -211,7 +216,7 @@ for k in range(len(accu_starts)):
         index_uncomf.append(len(trajs))
     istart = accu_starts[k]
     iend = accu_ends[k]
-    print(istart, iend)
+    print('Accu area n°', k, 'starts at x=',istart*x_step,'km and ends at x=', iend*x_step, 'km')
     for i in range(istart, iend+1):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
@@ -246,7 +251,7 @@ print('Before creating figures:',
     
 
 # ----------------------------------------
-# Plotting of figures
+# Preparing for figures
 # ----------------------------------------
 
 # Concatenation in lists for trajectories plots
@@ -276,6 +281,7 @@ for i in range(1, end):
 domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age}]
 uncomf_list = []
 
+
 for k in range(len(index_uncomf)):
     traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
     uncomf_list.append(traj_z)
@@ -292,6 +298,19 @@ for k in range(len(index_uncomf)):
         mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
         mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
     domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age})
+
+# Computation of quantities for ice cores
+# FIXME: we need to compute ice origin as well
+# for name in ic:
+#     i = np.argmin(np.abs(x[i]-ic[name]['x']))
+# #    i = ic[name]['index']
+#     zz = np.array([])
+#     aage = np.array([])
+#     for dom in domains_list:
+#         zz = np.concatenate(zz, dom['mat_z'][:,i])
+#         aage = np.concatenate(aage, dom['mat_age'][:,i])
+        
+        
 
 # ---------------------
 # Trajectories figure
@@ -411,7 +430,7 @@ ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=1000,
                  cmap='plasma', norm=norm)
-    cp = ax2.contour(mat_x, mat_z, mat_age, levels=levels_iso, colors='k',
+    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=levels_iso, colors='k',
                      norm=norm)
 
 for uncomf in uncomf_list:
