@@ -190,12 +190,12 @@ for z in np.arange(zz_start, S[0], z_step):
     zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
-    traj = {'x': xx, 'z': zz, 'age': age, 'out': None}
-    try:
+    traj = {'x': xx, 'z': zz, 'age': age, 'out': None, 'x0': x[0]}
+    if z == zz_start:
+        profs = [{'z': zz, 'age': age, 'x0': x[0], 'uncomf': []}]
+    else:
         profs[0]['z'] = np.append(profs[0]['z'], z)
         profs[0]['age'] = np.append(profs[0]['age'], age[0])
-    except:
-        profs = [{'z': zz, 'age': age}]
     j = 1
     while j < len(x) :
         traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
@@ -208,11 +208,14 @@ for z in np.arange(zz_start, S[0], z_step):
             ux = (ux1 + ux2 ) / 2                           # Can we do better here?
             dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
             traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+            if j == len(x)-1:
+                traj['out'] = 'downstream'
             try:
                 profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
                 profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+                profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
             except:
-                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1]})
+                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'uncomf': []})
         elif Q[j] < qq or traj['out'] == 'surf':
             traj['z'] = np.append(traj['z'], np.nan)
             traj['age'] = np.append(traj['age'], np.nan)
@@ -235,7 +238,10 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z':zz, 'age': age, 'out': None}
+        traj = {'x':xx, 'z':zz, 'age': age, 'out': None, 'x0': x[i]}
+        profs[i]['z'] = np.append(profs[i]['z'], traj['z'][-1])
+        profs[i]['age'] = np.append(profs[i]['age'], traj['age'][-1])
+        profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
         j = i+1
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])
@@ -248,11 +254,16 @@ for k in range(len(accu_starts)):
                 ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+                if j == len(x)-1:
+                    traj['out'] = 'downstream'
                 try:
                     profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
                     profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+                    profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
+                    if k>0 and i == istart:
+                        profs[j]['uncomf'].append(len(profs[j]['z'])-1)
                 except:
-                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1]})
+                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'uncomf': []})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z'] = np.append(traj['z'], np.nan)
                 traj['age'] = np.append(traj['age'], np.nan)
@@ -263,7 +274,7 @@ for k in range(len(accu_starts)):
                 traj['out'] = 'bed'
             j += 1
         trajs.append(traj)
-  
+
 print('Before creating figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
   
@@ -328,8 +339,15 @@ for k in range(len(index_uncomf)):
 #     for dom in domains_list:
 #         zz = np.concatenate(zz, dom['mat_z'][:,i])
 #         aage = np.concatenate(aage, dom['mat_age'][:,i])
-        
-        
+  
+# -------------------------
+# Quantities for ice cores
+# -------------------------
+      
+for name in ic:
+    ic[name]['XX'] = ic[name]['x'] * np.ones(2)
+    ic[name]['S'] = np.interp(ic[name]['x'], x, S)
+    ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
 
 # ---------------------
 # Trajectories figure
@@ -412,6 +430,13 @@ sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 plt.colorbar(sm, ax=ax2, label='age (yr)')
 
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+50), ha='center',
+                 va='bottom', color=color_core)
+
+
 plt.savefig(datadir+'trajectories_color_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
@@ -468,9 +493,6 @@ cb.add_lines(cp)
 
 
 for name in ic:
-    ic[name]['XX'] = ic[name]['x'] * np.ones(2)
-    ic[name]['S'] = np.interp(ic[name]['x'], x, S)
-    ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
     ax2.annotate(name, (ic[name]['x'], ic[name]['S']+50), ha='center',
@@ -491,12 +513,30 @@ print('After age figure:',
 for name in ic:
     ii = np.argmax(x[x <= ic[name]['x']]) # FIXME: check if outside and interpolate
     fig, ax = plt.subplots(figsize=(10, 10))
-    plt.title('ice core '+name+' age scale')
-    ax.plot(profs[ii]['age'], profs[ii]['z'])
-    ax.set_xlabel('age (yr)', fontsize=19)
-    ax.set_ylabel('z (m)', fontsize=19) # TODO: right axis with depth
+    plt.title('ice core '+name, fontsize=20)
+    prof_domains = profs[ii]['uncomf']
+    prof_domains.insert(0, 0)
+    prof_domains.append(len(profs[ii]['z']))
+    for i in range(len(prof_domains)-1):
+        ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
+#    ax.plot(profs[ii]['age'], profs[ii]['z'], color='b')
+    ax.set_xlabel('age (yr)', color='b')
+    ax.set_ylabel('z (m)') # TODO: right axis with depth
     ax.set_xlim(left=0)
     ax.set_ylim(top=S[ii], bottom=B[ii])
+    ax.spines['bottom'].set_color('b')
+    ax.tick_params(axis='x', colors='b')
+    x_low, x_up, y_low, y_up = ax.axis()
+    ax.hlines(profs[ii]['z'][prof_domains[1:-1]], x_low, x_up, linestyles='--', color = 'k')
+    ax2 = ax.twiny()
+    for i in range(len(prof_domains)-1):
+        ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
+#    ax2.plot(profs[ii]['x0'], profs[ii]['z'], color='r')
+    ax2.set_xlim(left=0)
+    ax2.set_xlabel('ice origin (km)', color='r')
+    ax2.spines['top'].set_color('r')
+    ax2.tick_params(axis='x', colors='r')
+    ax2.spines['bottom'].set_visible(False)
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
