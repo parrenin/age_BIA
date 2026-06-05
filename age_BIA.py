@@ -7,14 +7,15 @@ Ceci est un script temporaire.
 
 # TODO: plot Y
 # TODO: implement temporal factor
-# TODO: Calculate and display age at surface
 # TODO: exact formula for the age increase
-# TODO: calculate quantities for ice cores (age, origin, etc.)
+# TODO: output for ice cores
+# TODO: age observations for ice cores
 
 import sys
 import numpy as np
 from scipy.optimize import fsolve
 from scipy.integrate import quad
+from scipy.interpolate import interp1d
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -23,6 +24,7 @@ import time
 import math
 import os
 import resource
+import warnings
 
 
 # Registration of start time
@@ -160,7 +162,9 @@ Qm = np.cumsum(dQmdx)
 mu = Qm / (Q - Qm)
 QH = Q - Qm
 
-surf_vel = Q / Y * fct_domega_dzeta(1., p) / H
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    surf_vel = Q / Y * fct_domega_dzeta(1., p) / H
 
 # ------------------------------------
 # Determination of accumulation areas
@@ -186,7 +190,9 @@ zz_start = B[0] + ((S[0] - B[0]) % z_step)
 for z in np.arange(zz_start, S[0], z_step):
     xx = np.array([x[0]])
     zz = np.array([z])
-    age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
     zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
@@ -275,10 +281,25 @@ for k in range(len(accu_starts)):
             j += 1
         trajs.append(traj)
 
+# if len(profs) == len(x)-1:
+#     profs.append({'z': np.nan, 'age': np.nan, 'x0': np.nan, 'uncomf': []})
+
 print('Before creating figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
   
     
+# ----------------------------------------
+# Computation of surface ages
+# ----------------------------------------
+
+surf_age = np.zeros_like(x)
+for i in range(len(x)):
+    try:
+        surf_age[i] = interp1d(profs[i]['z'], profs[i]['age'], kind='linear', fill_value="extrapolate")(S[i])
+    except:
+        surf_age[i] = np.nan
+        
+# print(surf_age)
 
 # ----------------------------------------
 # Preparing for figures
@@ -329,21 +350,9 @@ for k in range(len(index_uncomf)):
         mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
     domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age})
 
-# Computation of quantities for ice cores
-# FIXME: we need to compute ice origin as well
-# for name in ic:
-#     i = np.argmin(np.abs(x[i]-ic[name]['x']))
-# #    i = ic[name]['index']
-#     zz = np.array([])
-#     aage = np.array([])
-#     for dom in domains_list:
-#         zz = np.concatenate(zz, dom['mat_z'][:,i])
-#         aage = np.concatenate(aage, dom['mat_age'][:,i])
-  
-# -------------------------
+
 # Quantities for ice cores
-# -------------------------
-      
+     
 for name in ic:
     ic[name]['XX'] = ic[name]['x'] * np.ones(2)
     ic[name]['S'] = np.interp(ic[name]['x'], x, S)
@@ -457,8 +466,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel, color='r', linewidth=2)
-ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.plot(x, surf_age, color='r', linewidth=2)
+ax1b.set_ylabel('surface age (yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
@@ -511,7 +520,7 @@ print('After age figure:',
 # ----------------------------
 
 for name in ic:
-    ii = np.argmax(x[x <= ic[name]['x']]) # FIXME: check if outside and interpolate
+    ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title('ice core '+name, fontsize=20)
     prof_domains = profs[ii]['uncomf']
@@ -519,20 +528,22 @@ for name in ic:
     prof_domains.append(len(profs[ii]['z']))
     for i in range(len(prof_domains)-1):
         ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
-#    ax.plot(profs[ii]['age'], profs[ii]['z'], color='b')
     ax.set_xlabel('age (yr)', color='b')
-    ax.set_ylabel('z (m)') # TODO: right axis with depth
+    ax.set_ylabel('z (m)')
     ax.set_xlim(left=0)
     ax.set_ylim(top=S[ii], bottom=B[ii])
     ax.spines['bottom'].set_color('b')
     ax.tick_params(axis='x', colors='b')
     x_low, x_up, y_low, y_up = ax.axis()
-    ax.hlines(profs[ii]['z'][prof_domains[1:-1]], x_low, x_up, linestyles='--', color = 'k')
+    ax.hlines(profs[ii]['z'][prof_domains[1:-1]], x_low, x_up, linestyles='--', linewidth=3., color = 'k')
+    axb = ax.twinx()
+    axb.set_ylim(top=0., bottom=S[ii]-B[ii])
+    axb.set_ylabel('depth (m)')
     ax2 = ax.twiny()
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
-#    ax2.plot(profs[ii]['x0'], profs[ii]['z'], color='r')
     ax2.set_xlim(left=0)
+    ax2.set_xlim(right=x_right)
     ax2.set_xlabel('ice origin (km)', color='r')
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
@@ -540,6 +551,7 @@ for name in ic:
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
+
 
 
 # Program execution time
