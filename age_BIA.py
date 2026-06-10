@@ -198,7 +198,7 @@ for z in np.arange(zz_start, S[0], z_step):
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
     traj = {'x': xx, 'z': zz, 'age': age, 'out': None, 'x0': x[0]}
     if z == zz_start:
-        profs = [{'z': zz, 'age': age, 'x0': x[0], 'uncomf': []}]
+        profs = [{'z': zz, 'age': age, 'x0': x[0], 'unconf': []}]
     else:
         profs[0]['z'] = np.append(profs[0]['z'], z)
         profs[0]['age'] = np.append(profs[0]['age'], age[0])
@@ -221,7 +221,7 @@ for z in np.arange(zz_start, S[0], z_step):
                 profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
             except:
-                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'uncomf': []})
+                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'unconf': []})
         elif Q[j] < qq or traj['out'] == 'surf':
             traj['z'] = np.append(traj['z'], np.nan)
             traj['age'] = np.append(traj['age'], np.nan)
@@ -232,11 +232,11 @@ for z in np.arange(zz_start, S[0], z_step):
             traj['out'] = 'bed'
         j += 1
     trajs.append(traj)
-index_uncomf = []
+index_unconf = []
 # Trajectories from the surface
 for k in range(len(accu_starts)):
     if k>0:
-        index_uncomf.append(len(trajs))
+        index_unconf.append(len(trajs))
     istart = accu_starts[k]
     iend = accu_ends[k]
     print('Accu area n°', k, 'starts at x=',istart*x_step,'km and ends at x=', iend*x_step, 'km')
@@ -267,9 +267,9 @@ for k in range(len(accu_starts)):
                     profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                     if k>0 and i == istart:
-                        profs[j]['uncomf'].append(len(profs[j]['z'])-1)
+                        profs[j]['unconf'].append(len(profs[j]['z'])-1)
                 except:
-                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'uncomf': []})
+                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'unconf': []})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z'] = np.append(traj['z'], np.nan)
                 traj['age'] = np.append(traj['age'], np.nan)
@@ -282,7 +282,7 @@ for k in range(len(accu_starts)):
         trajs.append(traj)
 
 # if len(profs) == len(x)-1:
-#     profs.append({'z': np.nan, 'age': np.nan, 'x0': np.nan, 'uncomf': []})
+#     profs.append({'z': np.nan, 'age': np.nan, 'x0': np.nan, 'unconf': []})
 
 print('Before creating figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
@@ -320,30 +320,30 @@ for i in range(0, len(trajs), step_traj):
 mat_x = np.array([trajs[0]['x']])
 mat_z = np.array([trajs[0]['z']])
 mat_age = np.array([trajs[0]['age']])
-if len(index_uncomf) ==0:
+if len(index_unconf) ==0:
     end = len(trajs)
 else:
-    end = index_uncomf[0]
+    end = index_unconf[0]
 for i in range(1, end):
 #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
     mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
     mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
     mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
 domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age}]
-uncomf_list = []
+unconf_list = []
 
 
-for k in range(len(index_uncomf)):
-    traj_z = trajs[index_uncomf[k]]['z']  # FIXME: average with traj below, but not so easy...
-    uncomf_list.append(traj_z)
-    mat_x = np.array([trajs[index_uncomf[k]]['x']])
-    mat_z = np.array([trajs[index_uncomf[k]]['z']])
-    mat_age = np.array([trajs[index_uncomf[k]]['age']])
-    if k == len(index_uncomf)-1:
+for k in range(len(index_unconf)):
+    traj_z = trajs[index_unconf[k]]['z']  # FIXME: average with traj below, but not so easy...
+    unconf_list.append(traj_z)
+    mat_x = np.array([trajs[index_unconf[k]]['x']])
+    mat_z = np.array([trajs[index_unconf[k]]['z']])
+    mat_age = np.array([trajs[index_unconf[k]]['age']])
+    if k == len(index_unconf)-1:
         end = len(trajs)
     else:
-        end = index_uncomf[k+1]
-    for i in range(index_uncomf[k]+1, end):
+        end = index_unconf[k+1]
+    for i in range(index_unconf[k]+1, end):
     #    print(np.shape(mat_x), np.shape(np.array([trajs[i]['x']])), trajs[i]['z'][0])
         mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
         mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
@@ -378,8 +378,8 @@ ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 for xx, zz in zip(x_list, z_list):
     ax2.plot(xx, zz, color='k')
     
-for k in range(len(index_uncomf)):
-    traj = trajs[index_uncomf[k]]
+for k in range(len(index_unconf)):
+    traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
@@ -427,8 +427,8 @@ for xx, zz, aa in zip(x_list, z_list, age_list):
     lc.set_linewidth(2)
     ax2.add_collection(lc)
 
-for k in range(len(index_uncomf)):
-    traj = trajs[index_uncomf[k]]
+for k in range(len(index_unconf)):
+    traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
@@ -486,8 +486,8 @@ for dom in domains_list:
     cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=levels_iso, colors='k',
                      norm=norm)
 
-for uncomf in uncomf_list:
-    ax2.plot(x, uncomf, label='Discontinuities', color='k', linewidth=4.,
+for unconf in unconf_list:
+    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
     
 
@@ -523,7 +523,7 @@ for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title('ice core '+name, fontsize=20)
-    prof_domains = profs[ii]['uncomf']
+    prof_domains = profs[ii]['unconf']
     prof_domains.insert(0, 0)
     prof_domains.append(len(profs[ii]['z']))
     for i in range(len(prof_domains)-1):
@@ -543,7 +543,7 @@ for name in ic:
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
     ax2.set_xlim(left=0)
-    ax2.set_xlim(right=x_right)
+    ax2.set_xlim(right=ic[name]['x'])
     ax2.set_xlabel('ice origin (km)', color='r')
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
