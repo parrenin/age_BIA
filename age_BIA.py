@@ -384,6 +384,13 @@ for k in range(len(index_unconf)):
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
+                 va='bottom', color=color_core)
+
 plt.savefig(datadir+'trajectories_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
@@ -442,7 +449,7 @@ plt.colorbar(sm, ax=ax2, label='age (yr)')
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
-    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+50), ha='center',
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
                  va='bottom', color=color_core)
 
 
@@ -504,7 +511,7 @@ cb.add_lines(cp)
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
-    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+50), ha='center',
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
                  va='bottom', color=color_core)
 
 plt.savefig(datadir+'age_x_z.'+fig_format,
