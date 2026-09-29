@@ -10,6 +10,7 @@ Ceci est un script temporaire.
 # TODO: age observations for ice cores
 # TODO: implement solid fraction
 # TODO: implement real_thickness
+# TODO: use depth for ice core figure instead of z
 
 import sys
 import numpy as np
@@ -37,39 +38,6 @@ if datadir[-1] != '/':
     datadir = datadir+'/'
 print('Parameters directory is: ', datadir)
 
-
-# ---------------------------------------------------------
-# Fonctions definition
-# ---------------------------------------------------------
-
-def fct_omega(zeta, p):
-    return 1 - (p + 2) / (p + 1) * (1 - zeta) + 1 / (p + 1) * (1 - zeta) ** (p + 2)
-
-def fct_zeta(omega, p):
-    # Définir la fonction dont on cherche la racine
-    def equation(zeta):
-        return fct_omega(zeta, p) - omega
-
-    # Résoudre numériquement
-    zeta_solution = fsolve(equation, omega)  # omega is an initial value
-    return zeta_solution[0]
-
-def fct_domega_dzeta(zeta, p):
-    return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
-
-def integrand(zeta, p, H, a, mu):
-    """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
-    return (H * (1 + mu)) / (a * (fct_omega(zeta, p) + mu))
-
-def integrate_age(zeta_min, zeta_max, p, H, a, mu):
-    """Intègre l'intégrande entre zeta_min et zeta_max."""
-    result, _ = quad(
-        lambda z: integrand(z, p, H, a, mu),
-        zeta_min,
-        zeta_max
-    )
-    return result
-
 # ---------------------------------------------------------
 # Reading parameters.yml file
 # ---------------------------------------------------------
@@ -94,6 +62,43 @@ temp_factor_file = None
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
 globals().update(para)
+
+
+# ---------------------------------------------------------
+# Fonctions definition
+# ---------------------------------------------------------
+
+def fct_omega(zeta, p):
+    return 1 - (p + 2) / (p + 1) * (1 - zeta) + 1 / (p + 1) * (1 - zeta) ** (p + 2)
+
+def fct_zeta(omega, p):
+    # Définir la fonction dont on cherche la racine
+    def equation(zeta):
+        return fct_omega(zeta, p) - omega
+    def derivative(zeta):
+        return fct_domega_dzeta(zeta, p)
+
+    # Résoudre numériquement
+    zeta_solution = fsolve(equation, omega, fprime=derivative)  # omega is an initial value
+    return zeta_solution[0]
+
+def fct_domega_dzeta(zeta, p):
+    return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
+
+def integrand(zeta, p, H, a, mu):
+    """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
+    return (H * (1 + mu)) / (a * (fct_omega(zeta, p) + mu))
+
+def integrate_age(zeta_min, zeta_max, p, H, a, mu):
+    """Intègre l'intégrande entre zeta_min et zeta_max."""
+    result, _ = quad(
+        lambda z: integrand(z, p, H, a, mu),
+        zeta_min,
+        zeta_max
+    )
+    return result
+
+
 
 
 # -----------------------------------------------------
@@ -129,7 +134,7 @@ x_Y, Y_measure = np.loadtxt(datadir+'tube_width.txt', unpack=True)
 if temp_factor_file != None:
     age_R, R = np.loadtxt(datadir+temp_factor_file, unpack=True)
     age_R = np.append(age_R, age_R[-1]+1)
-    age_R = np.append(age_R, 10000000)
+    age_R = np.append(age_R, 1e9)
     R = np.append(R, 1)
     R = np.append(R, 1)
     steady_age_R = np.concatenate((np.array([age_R[0]]),
@@ -283,6 +288,8 @@ for k in range(len(accu_starts)):
                 ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
+                # if len(trajs) == 243:
+                #     print(omega, zeta)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 try:

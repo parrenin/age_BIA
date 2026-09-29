@@ -5,7 +5,7 @@ z_step: 100.
 Q_left: 8e-8
 Qm_left: 1.6e-9
 fig_age_iso: [73, 85, 90, 97, 113, 121, 132, 160, 180, 203, 215, 240,243,304,321,336,367,397,476]
-step_traj: 10
+step_traj: 1
 scaling_age: 100.
 fig_format: 'svg'
 ic:
@@ -14,5 +14,5 @@ ic:
         "max_depth": 3189.
     "BELDC":
         "x": 39.8  # X coordinate of the drilling, in km
-        "max_depth": 2525.
+        "max_depth": 2500.
 
