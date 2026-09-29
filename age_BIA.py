@@ -89,6 +89,7 @@ ic = {}
 color_core = 'r'
 lw_core = 2
 ls_core = 'dashed'
+temp_factor_file = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -119,6 +120,24 @@ x_H, H_measure = np.loadtxt(datadir+'thickness.txt', unpack=True)
 
 # Tube width
 x_Y, Y_measure = np.loadtxt(datadir+'tube_width.txt', unpack=True)
+
+
+# ---------------------------------------------------------------
+# Loading data from temporal_factor.txt
+# ---------------------------------------------------------------
+
+if temp_factor_file != None:
+    age_R, R = np.loadtxt(datadir+temp_factor_file, unpack=True)
+    age_R = np.append(age_R, age_R[-1]+1)
+    age_R = np.append(age_R, 10000000)
+    R = np.append(R, 1)
+    R = np.append(R, 1)
+    steady_age_R = np.concatenate((np.array([age_R[0]]),
+                               (age_R[1:] - age_R[:-1]) * R[:-1]))
+    steady_age_R = np.cumsum(steady_age_R)
+else:
+    age_R = np.array([0, 1e9])
+    steady_age_R = age_R
 
 
 # --------------------------
@@ -196,12 +215,12 @@ for z in np.arange(zz_start, S[0], z_step):
     zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
-    traj = {'x': xx, 'z': zz, 'age': age, 'out': None, 'x0': x[0]}
+    traj = {'x': xx, 'z': zz, 'steady_age': age, 'out': None, 'x0': x[0]}
     if z == zz_start:
-        profs = [{'z': zz, 'age': age, 'x0': x[0], 'unconf': []}]
+        profs = [{'z': zz, 'steady_age': age, 'x0': x[0], 'unconf': []}]
     else:
         profs[0]['z'] = np.append(profs[0]['z'], z)
-        profs[0]['age'] = np.append(profs[0]['age'], age[0])
+        profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
     j = 1
     while j < len(x) :
         traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
@@ -213,24 +232,25 @@ for z in np.arange(zz_start, S[0], z_step):
             ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
             ux = (ux1 + ux2 ) / 2                           # Can we do better here?
             dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
-            traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+            traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
             if j == len(x)-1:
                 traj['out'] = 'downstream'
             try:
                 profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
-                profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+                profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
             except:
-                profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'unconf': []})
+                profs.append({'z': traj['z'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
         elif Q[j] < qq or traj['out'] == 'surf':
             traj['z'] = np.append(traj['z'], np.nan)
-            traj['age'] = np.append(traj['age'], np.nan)
+            traj['steady_age'] = np.append(traj['steady_age'], np.nan)
             traj['out'] = 'surf'
         elif Qm[j] > qq or traj['out'] == 'bed':
             traj['z'] = np.append(traj['z'], np.nan)
-            traj['age'] = np.append(traj['age'], np.nan)
+            traj['steady_age'] = np.append(traj['steady_age'], np.nan)
             traj['out'] = 'bed'
         j += 1
+    traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
     trajs.append(traj)
 index_unconf = []
 # Trajectories from the surface
@@ -244,9 +264,9 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z':zz, 'age': age, 'out': None, 'x0': x[i]}
+        traj = {'x':xx, 'z':zz, 'steady_age': age, 'out': None, 'x0': x[i]}
         profs[i]['z'] = np.append(profs[i]['z'], traj['z'][-1])
-        profs[i]['age'] = np.append(profs[i]['age'], traj['age'][-1])
+        profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
         j = i+1
         while j < len(x) :
@@ -259,30 +279,31 @@ for k in range(len(accu_starts)):
                 ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
                 ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
-                traj['age'] = np.append(traj['age'], traj['age'][-1]+dage)
+                traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 try:
                     profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
-                    profs[j]['age'] = np.append(profs[j]['age'], traj['age'][-1])
+                    profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                     if k>0 and i == istart:
                         profs[j]['unconf'].append(len(profs[j]['z'])-1)
                 except:
-                    profs.append({'z': traj['z'][-1], 'age': traj['age'][-1], 'x0': traj['x0'], 'unconf': []})
+                    profs.append({'z': traj['z'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z'] = np.append(traj['z'], np.nan)
-                traj['age'] = np.append(traj['age'], np.nan)
+                traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'surf'
             elif Qm[j] > Q[i] or traj['out'] == 'bed':
                 traj['z'] = np.append(traj['z'], np.nan)
-                traj['age'] = np.append(traj['age'], np.nan)
+                traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'bed'
             j += 1
+        traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
-# if len(profs) == len(x)-1:
-#     profs.append({'z': np.nan, 'age': np.nan, 'x0': np.nan, 'unconf': []})
+for i in range(len(x)-1):
+    profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
 
 print('Before creating figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
@@ -292,14 +313,13 @@ print('Before creating figures:',
 # Computation of surface ages
 # ----------------------------------------
 
-surf_age = np.zeros_like(x)
+surf_steady_age = np.zeros_like(x)
 for i in range(len(x)):
     try:
-        surf_age[i] = interp1d(profs[i]['z'], profs[i]['age'], kind='linear', fill_value="extrapolate")(S[i])
+        surf_steady_age[i] = interp1d(profs[i]['z'], profs[i]['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
     except:
-        surf_age[i] = np.nan
-        
-# print(surf_age)
+        surf_steady_age[i] = np.nan
+surf_age = np.interp(surf_steady_age, steady_age_R, age_R)        
 
 # ----------------------------------------
 # Preparing for figures
@@ -405,7 +425,6 @@ print('After trajectories figure:',
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
-
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
@@ -416,7 +435,7 @@ ax1b.set_ylabel('surface velocity (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
-age_max = max(max(age) for age in age_list)
+age_max = max(max(age/1000.) for age in age_list)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
@@ -430,7 +449,7 @@ for xx, zz, aa in zip(x_list, z_list, age_list):
 
     # Créer une LineCollection pour cette ligne
     lc = LineCollection(segments, cmap='plasma', norm=norm)
-    lc.set_array(aa)  # Associer les valeurs z aux segments
+    lc.set_array(aa/1000.)  # Associer les valeurs z aux segments
     lc.set_linewidth(2)
     ax2.add_collection(lc)
 
@@ -444,7 +463,7 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
-plt.colorbar(sm, ax=ax2, label='age (yr)')
+plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
@@ -473,12 +492,12 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1.set_ylabel('a (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_age, color='r', linewidth=2)
-ax1b.set_ylabel('surface age (yr)', color='r')
+ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.set_ylabel('surface age (kyr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
-age_max = max(max(age) for age in age_list)
+age_max = max(max(age/1000.) for age in age_list)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
@@ -488,9 +507,9 @@ ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
 
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=1000,
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=1000,
                  cmap='plasma', norm=norm)
-    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age'], levels=levels_iso, colors='k',
+    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
 
 for unconf in unconf_list:
@@ -504,7 +523,7 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, label='age (yr)')
+cb = plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
 cb.add_lines(cp)
 
 
@@ -534,8 +553,8 @@ for name in ic:
     prof_domains.insert(0, 0)
     prof_domains.append(len(profs[ii]['z']))
     for i in range(len(prof_domains)-1):
-        ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
-    ax.set_xlabel('age (yr)', color='b')
+        ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
+    ax.set_xlabel('age (kyr)', color='b')
     ax.set_ylabel('z (m)')
     ax.set_xlim(left=0)
     ax.set_ylim(top=S[ii], bottom=B[ii])
