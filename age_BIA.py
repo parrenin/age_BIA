@@ -215,7 +215,7 @@ for z in np.arange(zz_start, S[0], z_step):
     zeta = (zz-B[0])/H[0]
     omega = fct_omega(zeta, p[0]) 
     qq = Qm[0] + (Q[0]-Qm[0]) * omega
-    traj = {'x': xx, 'z': zz, 'steady_age': age, 'out': None, 'x0': x[0]}
+    traj = {'x': xx, 'z': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
     if z == zz_start:
         profs = [{'z': zz, 'steady_age': age, 'x0': x[0], 'unconf': []}]
     else:
@@ -264,7 +264,7 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z':zz, 'steady_age': age, 'out': None, 'x0': x[i]}
+        traj = {'x':xx, 'z':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i]}
         profs[i]['z'] = np.append(profs[i]['z'], traj['z'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
@@ -329,11 +329,13 @@ surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 x_list = []
 z_list = []
 age_list = []
+in_list = []
 for i in range(0, len(trajs), step_traj):
     traj = trajs[i]
     x_list.append(traj['x'])
     z_list.append(traj['z'])
     age_list.append(traj['age'])
+    in_list.append(traj['in'])
 
 # Creation of domains and unformities
 
@@ -395,8 +397,11 @@ ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
-for xx, zz in zip(x_list, z_list):
-    ax2.plot(xx, zz, color='k')
+for xx, zz, iin in zip(x_list, z_list, in_list):
+    if iin == 'upstream': 
+        ax2.plot(xx, zz, color='k')
+    elif iin == 'surf':
+        ax2.plot(xx, zz, color='b')
     
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
