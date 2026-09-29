@@ -6,10 +6,10 @@ Ceci est un script temporaire.
 """
 
 # TODO: plot Y
-# TODO: implement temporal factor
 # TODO: exact formula for the age increase
-# TODO: output for ice cores
 # TODO: age observations for ice cores
+# TODO: implement solid fraction
+# TODO: implement real_thickness
 
 import sys
 import numpy as np
@@ -258,7 +258,10 @@ for k in range(len(accu_starts)):
     if k>0:
         index_unconf.append(len(trajs))
     istart = accu_starts[k]
-    iend = accu_ends[k]
+    try:
+        iend = accu_ends[k]
+    except:
+        iend = len(x)-1
     print('Accu area n°', k, 'starts at x=',istart*x_step,'km and ends at x=', iend*x_step, 'km')
     for i in range(istart, iend+1):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
@@ -500,6 +503,10 @@ ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
 ax1b.set_ylabel('surface age (kyr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if top < 1.:
+    top = 1.
+ax1b.set_ylim(bottom, top)
 
 age_min = 0.
 age_max = max(max(age/1000.) for age in age_list)
