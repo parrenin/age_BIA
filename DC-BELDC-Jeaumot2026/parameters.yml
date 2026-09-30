@@ -8,6 +8,7 @@ fig_age_iso: [73, 85, 90, 97, 113, 121, 132, 160, 180, 203, 215, 240,243,304,321
 step_traj: 10
 scaling_age: 100.
 fig_format: 'svg'
+temp_factor_file: 'temporal_factor.txt'
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km
