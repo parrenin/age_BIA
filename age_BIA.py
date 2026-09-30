@@ -7,10 +7,8 @@ Ceci est un script temporaire.
 
 # TODO: plot Y
 # TODO: exact formula for the age increase
-# TODO: age observations for ice cores
+# TDO: use panda for inputs
 # TODO: implement solid fraction
-# TODO: implement real_thickness
-# TODO: use depth for ice core figure instead of z
 
 import sys
 import numpy as np
@@ -22,7 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import SymLogNorm
 import time
-import math as m
+import math
 import os
 import resource
 import warnings
@@ -58,6 +56,7 @@ color_core = 'r'
 lw_core = 2
 ls_core = 'dashed'
 temp_factor_file = None
+obs_bedrock = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -127,6 +126,12 @@ x_H, H_measure = np.loadtxt(datadir+'thickness.txt', unpack=True)
 x_Y, Y_measure = np.loadtxt(datadir+'tube_width.txt', unpack=True)
 
 
+# Reading of observed bedrock when different from mechanical bedrock
+if obs_bedrock is not None:
+    readarray = np.loadtxt(datadir+obs_bedrock, unpack=True)
+    obs_bed_x = readarray[0, :]
+    obs_bed_depth = readarray[1, :]
+
 # ---------------------------------------------------------------
 # Loading data from temporal_factor.txt
 # ---------------------------------------------------------------
@@ -144,7 +149,14 @@ else:
     age_R = np.array([0, 1e9])
     steady_age_R = age_R
 
-
+# -----------------------------------------------------------
+# Reading of comparison files
+# -----------------------------------------------------------
+for name in ic:
+    if ic[name]['comp'] is not None:
+        ic[name]['cp_depth'], ic[name]['cp_age'], ic[name]['cp_x'],\
+            ic[name]['cp_tau'] = np.loadtxt(datadir+ic[name]['comp'],
+                                            unpack=True)
 # --------------------------
 # Interpolation and fluxes
 # --------------------------
@@ -160,6 +172,11 @@ H = np.interp(x, x_H, H_measure)
 Y = np.interp(x, x_Y, Y_measure)
 
 B = S - H
+
+if obs_bedrock != None:
+    obs_bed_depth = np.interp(x, obs_bed_x, obs_bed_depth)
+    obs_bed_z = S - obs_bed_depth
+
 
 # Computation of total flux Q
 dQdx = (x[1:]-x[:-1]) * 1000 * \
@@ -412,13 +429,18 @@ ax1b.set_ylabel('surface velocity (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
-ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
 for xx, zz, iin in zip(x_list, z_list, in_list):
     if iin == 'upstream': 
         ax2.plot(xx, zz, color='k')
     elif iin == 'surf':
         ax2.plot(xx, zz, color='b')
-    
+
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
@@ -462,7 +484,11 @@ linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient li
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
-ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
 for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
@@ -529,8 +555,11 @@ norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
-ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
-
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=1000,
@@ -541,7 +570,7 @@ for dom in domains_list:
 for unconf in unconf_list:
     ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
-    
+
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
@@ -580,6 +609,8 @@ for name in ic:
     prof_domains.append(len(profs[ii]['z']))
     for i in range(len(prof_domains)-1):
         ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
+    if ic[name]['comp'] != None:
+        ax.plot(ic[name]['cp_age'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
     ax.set_xlabel('age (kyr)', color='b')
     ax.set_ylabel('z (m)')
     ax.set_ylim(top=S[ii], bottom=S[ii]-ic[name]['max_depth'])
@@ -595,6 +626,8 @@ for name in ic:
     ax2 = ax.twiny()
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
+    if ic[name]['comp'] != None:
+        ax.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
     ax2.set_xlim(left=0)
     ax2.set_xlim(right=ic[name]['x'])
     ax2.set_xlabel('ice origin (km)', color='r')
