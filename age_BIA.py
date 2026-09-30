@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import SymLogNorm
 import time
-import math
+import math as m
 import os
 import resource
 import warnings
@@ -241,7 +241,8 @@ if Q[0]>0:
                 traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
                 ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
                 ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
-                ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
                 if j == len(x)-1:
@@ -289,7 +290,8 @@ for k in range(len(accu_starts)):
                 traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
                 ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
                 ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
-                ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
                 # if len(trajs) == 243:
