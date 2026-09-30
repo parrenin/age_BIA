@@ -9,6 +9,8 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
 # TODO: implement solid fraction
+# TODO: show observed isochrones
+# TODO: build both depth and z figures
 
 import sys
 import numpy as np
@@ -57,6 +59,7 @@ lw_core = 2
 ls_core = 'dashed'
 temp_factor_file = None
 obs_bedrock = None
+comp_isochrones = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -131,6 +134,18 @@ if obs_bedrock is not None:
     readarray = np.loadtxt(datadir+obs_bedrock, unpack=True)
     obs_bed_x = readarray[0, :]
     obs_bed_depth = readarray[1, :]
+
+# ---------------------------------------------------------------
+# Reading of comparison isochrones
+# ---------------------------------------------------------------
+
+if comp_isochrones is not None:
+    readarray = np.loadtxt(datadir+comp_isochrones, unpack=True)
+    cp_iso_x = readarray[0, :]
+    cp_iso_depth = readarray[1:, :]
+    cp_iso_nb = cp_iso_depth.shape[0]
+    cp_iso_nb = cp_iso_depth.shape[0]
+    cp_iso_z = np.interp(cp_iso_x, x_S, S_measure) - cp_iso_depth
 
 # ---------------------------------------------------------------
 # Loading data from temporal_factor.txt
@@ -561,6 +576,12 @@ if obs_bedrock is not None:
 else:
     ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
+
+if comp_isochrones is not None:
+    for i in range(cp_iso_nb):
+        ax2.plot(cp_iso_x, cp_iso_z[i, :],
+                 color='w', linewidth=1)
+
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=1000,
                  cmap='plasma', norm=norm)
@@ -570,6 +591,8 @@ for dom in domains_list:
 for unconf in unconf_list:
     ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
+
+
 
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
