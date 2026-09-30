@@ -241,8 +241,8 @@ for i in range(1, len(x)-1):
         accu_ends.append(i)
     elif Q[i] <= Q[i-1] and Q[i] < Q[i+1] : #To be checked
         accu_starts.append(i+1)
-  
-        
+
+
 # --------------------------------------
 # Determination of trajectories
 # --------------------------------------
@@ -432,6 +432,7 @@ for name in ic:
     ic[name]['XX'] = ic[name]['x'] * np.ones(2)
     ic[name]['S'] = np.interp(ic[name]['x'], x, S)
     ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
+    ic[name]['DD'] = np.array([0., ic[name]['max_depth']])
 
 # ---------------------
 # Trajectories figure
@@ -471,7 +472,7 @@ ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
-    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']), ha='center',
                  va='bottom', color=color_core)
 
 plt.savefig(datadir+'trajectories_x_z.'+fig_format,
@@ -479,8 +480,56 @@ plt.savefig(datadir+'trajectories_x_z.'+fig_format,
 plt.close()
 
 
-print('After trajectories figure:',
+
+# -----------------------------
+# Trajectories figure vs depth
+# -----------------------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_vel, color='r', linewidth=2)
+ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
+
+ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+for xx, zz, iin in zip(x_list, z_list, in_list):
+    if iin == 'upstream': 
+        ax2.plot(xx, S-zz, color='k')
+    elif iin == 'surf':
+        ax2.plot(xx, S-zz, color='b')
+
+for k in range(len(index_unconf)):
+    traj = trajs[index_unconf[k]]
+    ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+
+ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylim(ax2.get_ylim()[::-1])
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], 0.), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'trajectories_x_depth.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+print('After simple trajectories figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
+
 
 # ---------------------------
 # Color trajectories figure
@@ -536,7 +585,7 @@ plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
-    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']), ha='center',
                  va='bottom', color=color_core)
 
 
@@ -544,7 +593,72 @@ plt.savefig(datadir+'trajectories_color_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
-print('After color trajectories figure:',
+
+# -----------------------------------
+# Color trajectories figure vs depth 
+# -----------------------------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_vel, color='r', linewidth=2)
+ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
+
+age_min = 0.
+age_max = max(np.nanmax(age/1000.) for age in age_list)
+# print(age_max)
+linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
+norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
+
+ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+for xx, zz, aa in zip(x_list, z_list, age_list):
+    # Créer des segments entre les points consécutifs
+    points = np.array([xx, S-zz]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    # Créer une LineCollection pour cette ligne
+    lc = LineCollection(segments, cmap='plasma_r', norm=norm)
+    lc.set_array(aa/1000.)  # Associer les valeurs z aux segments
+    lc.set_linewidth(2)
+    ax2.add_collection(lc)
+
+for k in range(len(index_unconf)):
+    traj = trajs[index_unconf[k]]
+    ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+
+ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylim(ax2.get_ylim()[::-1])
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
+sm.set_array([])
+plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], 0.), ha='center',
+                 va='bottom', color=color_core)
+
+
+plt.savefig(datadir+'trajectories_color_x_depth.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+print('After color trajectories figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
 
 
@@ -613,14 +727,87 @@ cb.add_lines(cp)
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
              color=color_core, linestyle=ls_core)
-    ax2.annotate(name, (ic[name]['x'], ic[name]['S']+20), ha='center',
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']), ha='center',
                  va='bottom', color=color_core)
 
 plt.savefig(datadir+'age_x_z.'+fig_format,
                 format=fig_format, bbox_inches='tight')
 plt.close()
 
-print('After age figure:',
+
+# --------------------
+# Age figure vs depth 
+# --------------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.set_ylabel('a (m/yr)', fontsize=19)
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.set_ylabel('surface age (kyr)', color='r')
+ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if top < 1.:
+    top = 1.
+ax1b.set_ylim(bottom, top)
+
+age_min = 0.
+age_max = max(np.nanmax(age/1000.) for age in age_list)
+linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
+norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
+levels_iso = np.array(fig_age_iso)
+
+ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+
+if comp_isochrones is not None:
+    for i in range(cp_iso_nb):
+        ax2.plot(cp_iso_x, cp_iso_depth[i, :],
+                 color='w', linewidth=1)
+
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=1000,
+                 cmap='plasma_r', norm=norm)
+    cp = ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
+                     norm=norm)
+
+for unconf in unconf_list:
+    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
+
+
+ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylim(ax2.get_ylim()[::-1])
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
+sm.set_array([])
+cb = plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+cb.add_lines(cp)
+
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], 0.), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'age_x_depth.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+print('After age figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
 
 
