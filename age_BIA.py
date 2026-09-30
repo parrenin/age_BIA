@@ -170,7 +170,7 @@ dQdx = (x[1:]-x[:-1]) * 1000 * \
 
 dQdx = np.insert(dQdx, 0, Q_left)
 Q = np.cumsum(dQdx)
-if np.any(Q<=0):
+if np.any(Q[1:]<=0):
     print('Warning: total flux becomes negatif at some point! Exiting...')
     sys.exit()
 
@@ -194,7 +194,10 @@ with warnings.catch_warnings():
 # Determination of accumulation areas
 # ------------------------------------
 
-accu_starts = [0]
+if Q[0]>0: 
+    accu_starts = [0]
+else:
+    accu_starts = [1]
 accu_ends = []
 for i in range(1, len(x)-1):
     if Q[i] > Q[i-1] and Q[i] >= Q[i+1] : #To be checked
@@ -207,56 +210,57 @@ for i in range(1, len(x)-1):
 # Determination of trajectories
 # --------------------------------------
 
+# Initialisation of trajectories and profiles
 trajs = []
 profs = []
+for i in range(len(x)):
+    prof = {'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': []}
+    profs.append(prof)
+    
 # Trajectories from the upstream border
-zz_start = B[0] + ((S[0] - B[0]) % z_step)
-for z in np.arange(zz_start, S[0], z_step):
-    xx = np.array([x[0]])
-    zz = np.array([z])
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
-    zeta = (zz-B[0])/H[0]
-    omega = fct_omega(zeta, p[0]) 
-    qq = Qm[0] + (Q[0]-Qm[0]) * omega
-    traj = {'x': xx, 'z': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
-    if z == zz_start:
-        profs = [{'z': zz, 'steady_age': age, 'x0': x[0], 'unconf': []}]
-    else:
+if Q[0]>0:
+    zz_start = B[0] + ((S[0] - B[0]) % z_step)
+    for z in np.arange(zz_start, S[0], z_step):
+        xx = np.array([x[0]])
+        zz = np.array([z])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
+        zeta = (zz-B[0])/H[0]
+        omega = fct_omega(zeta, p[0]) 
+        qq = Qm[0] + (Q[0]-Qm[0]) * omega
+        traj = {'x': xx, 'z': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
         profs[0]['z'] = np.append(profs[0]['z'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
-    j = 1
-    while j < len(x) :
-        traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
-        if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
-            omega = (qq-Qm[j])/(Q[j]-Qm[j])
-            zeta = fct_zeta(omega, p[j])
-            traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
-            ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
-            ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
-            ux = (ux1 + ux2 ) / 2                           # Can we do better here?
-            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
-            traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-            if j == len(x)-1:
-                traj['out'] = 'downstream'
-            try:
+        j = 1
+        while j < len(x) :
+            traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
+            if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
+                omega = (qq-Qm[j])/(Q[j]-Qm[j])
+                zeta = fct_zeta(omega, p[j])
+                traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
+                ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
+                ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
+                ux = (ux1 + ux2 ) / 2                           # Can we do better here?
+                dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
+                traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
+                if j == len(x)-1:
+                    traj['out'] = 'downstream'
                 profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
                 profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
-            except:
-                profs.append({'z': traj['z'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
-        elif Q[j] < qq or traj['out'] == 'surf':
-            traj['z'] = np.append(traj['z'], np.nan)
-            traj['steady_age'] = np.append(traj['steady_age'], np.nan)
-            traj['out'] = 'surf'
-        elif Qm[j] > qq or traj['out'] == 'bed':
-            traj['z'] = np.append(traj['z'], np.nan)
-            traj['steady_age'] = np.append(traj['steady_age'], np.nan)
-            traj['out'] = 'bed'
-        j += 1
-    traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
-    trajs.append(traj)
+            elif Q[j] < qq or traj['out'] == 'surf':
+                traj['z'] = np.append(traj['z'], np.nan)
+                traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['out'] = 'surf'
+            elif Qm[j] > qq or traj['out'] == 'bed':
+                traj['z'] = np.append(traj['z'], np.nan)
+                traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['out'] = 'bed'
+            j += 1
+        traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
+        trajs.append(traj)
+
 index_unconf = []
 # Trajectories from the surface
 for k in range(len(accu_starts)):
@@ -450,7 +454,8 @@ ax1b.set_ylabel('surface velocity (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
-age_max = max(max(age/1000.) for age in age_list)
+age_max = max(np.nanmax(age/1000.) for age in age_list)
+# print(age_max)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
@@ -516,7 +521,7 @@ if top < 1.:
 ax1b.set_ylim(bottom, top)
 
 age_min = 0.
-age_max = max(max(age/1000.) for age in age_list)
+age_max = max(np.nanmax(age/1000.) for age in age_list)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
