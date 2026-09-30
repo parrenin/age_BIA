@@ -59,6 +59,7 @@ ls_core = 'dashed'
 temp_factor_file = None
 obs_bedrock = None
 comp_isochrones = None
+x_start = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -204,6 +205,9 @@ Q = np.cumsum(dQdx)
 if np.any(Q[1:]<=0):
     print('Warning: total flux becomes negatif at some point! Exiting...')
     sys.exit()
+elif Q[0] < 0:
+    print('Total flux at start cannot be <0. Exiting...')
+    sys.exit()
 
 # Computation of basal melting flux Qm
 dQmdx = (x[1:]-x[:-1]) * 1000 * \
@@ -225,10 +229,12 @@ with warnings.catch_warnings():
 # Determination of accumulation areas
 # ------------------------------------
 
-if Q[0]>0: 
+if x_start == None and Q[0]>0: 
     accu_starts = [0]
-else:
+elif x_start == None and Q[0] == 0:
     accu_starts = [1]
+else:
+    accu_starts = [np.argmin(np.abs(x_start-x))]
 accu_ends = []
 for i in range(1, len(x)-1):
     if Q[i] > Q[i-1] and Q[i] >= Q[i+1] : #To be checked
@@ -510,7 +516,7 @@ for xx, zz, aa in zip(x_list, z_list, age_list):
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
     # Créer une LineCollection pour cette ligne
-    lc = LineCollection(segments, cmap='plasma', norm=norm)
+    lc = LineCollection(segments, cmap='plasma_r', norm=norm)
     lc.set_array(aa/1000.)  # Associer les valeurs z aux segments
     lc.set_linewidth(2)
     ax2.add_collection(lc)
@@ -523,7 +529,7 @@ ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
 plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
 
@@ -583,7 +589,7 @@ if comp_isochrones is not None:
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=1000,
-                 cmap='plasma', norm=norm)
+                 cmap='plasma_r', norm=norm)
     cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
 
@@ -598,7 +604,7 @@ ax2.set_xlabel(r'$x$ (km)', fontsize=19)
 ax2.set_ylabel(r'$z$ (m)', fontsize=19)
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
 cb.add_lines(cp)

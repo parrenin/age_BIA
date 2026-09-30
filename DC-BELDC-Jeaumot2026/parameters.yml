@@ -11,6 +11,7 @@ fig_format: 'svg'
 temp_factor_file: 'temporal_factor.txt'
 obs_bedrock: 'real_thickness.txt'
 comp_isochrones: 'isochrones.txt'
+x_start: 1.
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km
