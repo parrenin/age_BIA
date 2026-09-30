@@ -9,7 +9,6 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
 # TODO: implement solid fraction
-# TODO: show observed isochrones
 # TODO: build both depth and z figures
 
 import sys
