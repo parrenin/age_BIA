@@ -8,8 +8,6 @@ Ceci est un script temporaire.
 # TODO: plot Y
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
-# TODO: implement solid fraction
-# TODO: write a README.md file with documentation
 # TODO: comparison file for surface velocity
 # TODO: output file for the flow line
 # TODO: implement figure R_temporal_factor.pdf
@@ -64,6 +62,7 @@ temp_factor_file = None
 obs_bedrock = None
 comp_isochrones = None
 x_start = None
+solid_fraction = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -168,6 +167,23 @@ else:
     age_R = np.array([0, 1e9])
     steady_age_R = age_R
 
+# ----------------------------------------------------------------
+# Loading data from solid_fraction.txt
+# ----------------------------------------------------------------
+
+if solid_fraction != None:
+    D_depth, D_D = np.loadtxt(datadir+solid_fraction, unpack=True)
+    D_depth = np.append(D_depth, D_depth[-1]+0.01)
+    D_depth = np.append(D_depth, 10000)
+    D_D = np.append(D_D, 1)
+    D_D = np.append(D_D, 1)
+
+    D_depth_ie = np.cumsum(np.concatenate((np.array([0]),
+                                       D_D[:-1] * (D_depth[1:]-D_depth[:-1]))))
+else:
+    D_depth_ie = np.array([0, 10000])
+    D_depth = D_depth_ie
+
 # -----------------------------------------------------------
 # Reading of comparison files
 # -----------------------------------------------------------
@@ -229,6 +245,16 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     surf_vel = Q / Y * fct_domega_dzeta(1., p) / H
 
+
+# ----------------------------------------------------------
+# DELTA H, H_ie and S_ie
+# ----------------------------------------------------------
+
+DELTA_H = D_depth[-1] - D_depth_ie[-1]
+print('DELTA_H:', DELTA_H)
+S_ie = S - DELTA_H
+H_ie = H - DELTA_H
+
 # ------------------------------------
 # Determination of accumulation areas
 # ------------------------------------
@@ -255,23 +281,23 @@ for i in range(1, len(x)-1):
 trajs = []
 profs = []
 for i in range(len(x)):
-    prof = {'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': []}
+    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf_ie': [], 'unconf': []}
     profs.append(prof)
     
 # Trajectories from the upstream border
 if Q[0]>0:
-    zz_start = B[0] + ((S[0] - B[0]) % z_step)
-    for z in np.arange(zz_start, S[0], z_step):
+    zz_start = B[0] + ((S_ie[0] - B[0]) % z_step)
+    for z in np.arange(zz_start, S_ie[0], z_step):
         xx = np.array([x[0]])
         zz = np.array([z])
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            age = np.array([integrate_age((zz-B[0])/H[0], 1, p[0], H[0], a[0], mu[0])])
-        zeta = (zz-B[0])/H[0]
+            age = np.array([integrate_age((zz-B[0])/H_ie[0], 1, p[0], H_ie[0], a[0], mu[0])])
+        zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        traj = {'x': xx, 'z': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
-        profs[0]['z'] = np.append(profs[0]['z'], z)
+        traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
+        profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
         j = 1
         while j < len(x) :
@@ -279,27 +305,28 @@ if Q[0]>0:
             if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
                 omega = (qq-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
-                traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
-                ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
-                ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
+                traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta((traj['z_ie'][-2]-B[j-1])/H_ie[j-1], p[j-1])
+                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta((traj['z_ie'][-1]-B[j])/H_ie[j], p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
-                profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
+                profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                 profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
             elif Q[j] < qq or traj['out'] == 'surf':
-                traj['z'] = np.append(traj['z'], np.nan)
+                traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'surf'
             elif Qm[j] > qq or traj['out'] == 'bed':
-                traj['z'] = np.append(traj['z'], np.nan)
+                traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'bed'
             j += 1
+        traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
@@ -316,10 +343,10 @@ for k in range(len(accu_starts)):
     print('Accu area n°', k, 'starts at x=',istart*x_step,'km and ends at x=', iend*x_step, 'km')
     for i in range(istart, iend+1):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
-        zz = np.concatenate([np.ones(i)*np.nan, np.array([S[i]])])
+        zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i]}
-        profs[i]['z'] = np.append(profs[i]['z'], traj['z'][-1])
+        traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i]}
+        profs[i]['z_ie'] = np.append(profs[i]['z_ie'], traj['z_ie'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
         j = i+1
@@ -328,9 +355,9 @@ for k in range(len(accu_starts)):
             if Q[j] >= Q[i] and Qm[j] <= Q[i] and traj['out'] == None :
                 omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
-                traj['z'] = np.append(traj['z'], B[j] + zeta * H[j])
-                ux1 = QH[j-1]/Y[j-1]/H[j-1]*fct_domega_dzeta((traj['z'][-2]-B[j-1])/H[j-1], p[j-1])
-                ux2 = QH[j]/Y[j]/H[j]*fct_domega_dzeta((traj['z'][-1]-B[j])/H[j], p[j])
+                traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta((traj['z_ie'][-2]-B[j-1])/H_ie[j-1], p[j-1])
+                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta((traj['z_ie'][-1]-B[j])/H_ie[j], p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
@@ -339,27 +366,30 @@ for k in range(len(accu_starts)):
                 #     print(omega, zeta)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
-                try:
-                    profs[j]['z'] = np.append(profs[j]['z'], traj['z'][-1])
+                try: #Remove try now that we initialize profs
+                    profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                     profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                     if k>0 and i == istart:
-                        profs[j]['unconf'].append(len(profs[j]['z'])-1)
+                        profs[j]['unconf_ie'].append(len(profs[j]['z_ie'])-1)
                 except:
-                    profs.append({'z': traj['z'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
+                    profs.append({'z_ie': traj['z_ie'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
-                traj['z'] = np.append(traj['z'], np.nan)
+                traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'surf'
             elif Qm[j] > Q[i] or traj['out'] == 'bed':
-                traj['z'] = np.append(traj['z'], np.nan)
+                traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['out'] = 'bed'
             j += 1
+        traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
 for i in range(len(x)-1):
+    profs[i]['z'] = S[i]-np.interp(S_ie[i]-profs[i]['z_ie'], D_depth_ie, D_depth)
+    profs[i]['unconf'] = list(S[i]-np.interp(S_ie[i]-np.array(profs[i]['unconf_ie']), D_depth_ie, D_depth))
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
 
 print('Before creating figures:',

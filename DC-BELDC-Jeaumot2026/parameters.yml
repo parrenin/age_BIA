@@ -11,6 +11,7 @@ fig_format: 'svg'
 temp_factor_file: 'temporal_factor.txt'
 obs_bedrock: 'real_thickness.txt'
 comp_isochrones: 'isochrones.txt'
+solid_fraction: 'solid_fraction.txt'
 x_start: 1.1
 ic:
     "EDC":
