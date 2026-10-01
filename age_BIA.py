@@ -9,7 +9,11 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
 # TODO: implement solid fraction
-# TODO: build both depth and z figures
+# TODO: write a README.md file with documentation
+# TODO: comparison file for surface velocity
+# TODO: output file for the flow line
+# TODO: implement figure R_temporal_factor.pdf
+# TODO: implement output for ice cores
 
 import sys
 import numpy as np
@@ -514,7 +518,7 @@ for k in range(len(index_unconf)):
     ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 for name in ic:
@@ -638,7 +642,7 @@ for k in range(len(index_unconf)):
     ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
@@ -786,7 +790,7 @@ for unconf in unconf_list:
 
 
 ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$depth$ (m)', fontsize=19)
+ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
@@ -818,7 +822,7 @@ print('After age figures:',
 for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
     fig, ax = plt.subplots(figsize=(10, 10))
-    plt.title('ice core '+name, fontsize=20)
+    plt.title(name + ' ice core', fontsize=20)
     prof_domains = profs[ii]['unconf']
     prof_domains.insert(0, 0)
     prof_domains.append(len(profs[ii]['z']))
