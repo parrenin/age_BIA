@@ -281,7 +281,7 @@ for i in range(1, len(x)-1):
 trajs = []
 profs = []
 for i in range(len(x)):
-    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf_ie': [], 'unconf': []}
+    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': []}
     profs.append(prof)
     
 # Trajectories from the upstream border
@@ -371,7 +371,7 @@ for k in range(len(accu_starts)):
                     profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                     if k>0 and i == istart:
-                        profs[j]['unconf_ie'].append(len(profs[j]['z_ie'])-1)
+                        profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
                 except:
                     profs.append({'z_ie': traj['z_ie'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
             elif Q[j] < Q[i] or traj['out'] == 'surf':
@@ -389,7 +389,6 @@ for k in range(len(accu_starts)):
 
 for i in range(len(x)-1):
     profs[i]['z'] = S[i]-np.interp(S_ie[i]-profs[i]['z_ie'], D_depth_ie, D_depth)
-    profs[i]['unconf'] = list(S[i]-np.interp(S_ie[i]-np.array(profs[i]['unconf_ie']), D_depth_ie, D_depth))
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
 
 print('Before creating figures:',
