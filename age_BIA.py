@@ -10,8 +10,9 @@ Ceci est un script temporaire.
 # TDO: use panda for inputs
 # TODO: comparison file for surface velocity
 # TODO: output file for the flow line
-# TODO: implement figure R_temporal_factor.pdf
 # TODO: implement output for ice cores
+# TODO: can we interpolate age/origin/etc. on the grid?
+# TODO: can we calculate thinning?
 
 import sys
 import numpy as np
@@ -58,7 +59,7 @@ ic = {}
 color_core = 'r'
 lw_core = 2
 ls_core = 'dashed'
-temp_factor_file = None
+temp_factor = None
 obs_bedrock = None
 comp_isochrones = None
 x_start = None
@@ -154,8 +155,8 @@ if comp_isochrones is not None:
 # Loading data from temporal_factor.txt
 # ---------------------------------------------------------------
 
-if temp_factor_file != None:
-    age_R, R = np.loadtxt(datadir+temp_factor_file, unpack=True)
+if temp_factor != None:
+    age_R, R = np.loadtxt(datadir+temp_factor, unpack=True)
     age_R = np.append(age_R, age_R[-1]+1)
     age_R = np.append(age_R, 1e9)
     R = np.append(R, 1)
@@ -885,6 +886,19 @@ for name in ic:
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
+
+
+# ---------------------------------------------------------------------
+# R(t) - Age
+# ---------------------------------------------------------------------
+
+if temp_factor != None:
+    fig, ax = plt.subplots()
+    plt.stairs(R[:-2], age_R[:-1]/1000, baseline=None)
+    plt.xlabel('time (kyr)', fontsize=15)
+    plt.ylabel(r'$R(t) (relative unit)$', fontsize=15)
+    plt.savefig(datadir+'temporal_factor.'+fig_format,
+                format=fig_format, bbox_inches='tight')
 
 
 
