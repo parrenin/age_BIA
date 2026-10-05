@@ -9,7 +9,6 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
 # TODO: comparison file for surface velocity
-# TODO: present-day surface velocity, not average one
 # TODO: comparison files for unconformities
 # TODO: output file for the flow line
 # TODO: implement output for ice cores
@@ -483,11 +482,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel, color='r', linewidth=2)
-ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
@@ -535,11 +534,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel, color='r', linewidth=2)
-ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
@@ -589,11 +588,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel, color='r', linewidth=2)
-ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
@@ -656,11 +655,11 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel, color='r', linewidth=2)
-ax1b.set_ylabel('surface velocity (m/yr)', color='r')
+ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
 ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
@@ -729,7 +728,7 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
@@ -805,7 +804,7 @@ fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel('a (m/yr)', fontsize=19)
+ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
