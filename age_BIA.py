@@ -16,8 +16,9 @@ Ceci est un script temporaire.
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we calculate thinning?
 # TODO: Plot isochrones on the ice core figure
-# TODO: Plot "direction of the flow" on the figures with an arrow.
 # TODO: Can we factorize the code in a function for figures?
+# TODO: Parametrize input files names?
+# TODO: Use a gridded interpolation for inversion, instead of fsolve?
 
 import sys
 import numpy as np
@@ -82,6 +83,9 @@ globals().update(para)
 def fct_omega(zeta, p):
     return 1 - (p + 2) / (p + 1) * (1 - zeta) + 1 / (p + 1) * (1 - zeta) ** (p + 2)
 
+def fct_domega_dzeta(zeta, p):
+    return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
+
 def fct_zeta(omega, p):
     # Définir la fonction dont on cherche la racine
     def equation(zeta):
@@ -92,9 +96,6 @@ def fct_zeta(omega, p):
     # Résoudre numériquement
     zeta_solution = fsolve(equation, omega, fprime=derivative)  # omega is an initial value
     return zeta_solution[0]
-
-def fct_domega_dzeta(zeta, p):
-    return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
 
 def integrand(zeta, p, H, a, mu):
     """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
