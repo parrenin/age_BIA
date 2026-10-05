@@ -90,7 +90,7 @@ If the run went correctly, it has created output files for the whole flow line:
 - `flow_line_output.txt`: is the output for the whole flow line
 - `age_x_z.pdf`: is the same using the (x,z) coordinate system
 - `age_x_depth.pdf`: is the same using the (x,depth) coordinate system
-- `R_temporal_factor.pdf`: is the figure with the accu/melting temporal factor
+- `temporal_factor.pdf`: is the figure with the accu/melting temporal factor
 - `trajectories_x_z.pdf`: are the stream lines / trajectories in (x,z)
 - `trajectories_x_depth.pdf`: same using (x,depth)
 - `trajectories_color_x_z.pdf`: are the stream lines / trajectories in (x,z) with age in color scale

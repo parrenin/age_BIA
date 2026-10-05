@@ -9,10 +9,15 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
 # TODO: comparison file for surface velocity
+# TODO: present-day surface velocity, not average one
+# TODO: comparison files for unconformities
 # TODO: output file for the flow line
 # TODO: implement output for ice cores
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we calculate thinning?
+# TODO: Plot isochrones on the ice core figure
+# TODO: Plot "direction of the flow" on the figures with an arrow.
+# TODO: Can we factorize the code in a function for figures?
 
 import sys
 import numpy as np
@@ -472,7 +477,8 @@ for name in ic:
 # Trajectories figure
 # ---------------------
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
@@ -489,6 +495,10 @@ if obs_bedrock is not None:
     ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
     ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 for xx, zz, iin in zip(x_list, z_list, in_list):
     if iin == 'upstream': 
@@ -519,7 +529,8 @@ plt.close()
 # Trajectories figure vs depth
 # -----------------------------
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
 ax1.plot(x, a, color='k', linewidth=2)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
@@ -536,6 +547,10 @@ if obs_bedrock is not None:
     ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
     ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 for xx, zz, iin in zip(x_list, z_list, in_list):
     if iin == 'upstream': 
@@ -592,6 +607,10 @@ if obs_bedrock is not None:
     ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
     ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
@@ -655,6 +674,10 @@ if obs_bedrock is not None:
     ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
     ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
@@ -729,6 +752,9 @@ if obs_bedrock is not None:
 else:
     ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
 
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 if comp_isochrones is not None:
     for i in range(cp_iso_nb):
@@ -802,6 +828,9 @@ if obs_bedrock is not None:
 else:
     ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
 
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
 
 if comp_isochrones is not None:
     for i in range(cp_iso_nb):
@@ -819,7 +848,7 @@ for unconf in unconf_list:
              linestyle='--')
 
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_xlabel('$x$ (km)', fontsize=19)
 ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
@@ -899,7 +928,7 @@ if temp_factor != None:
     plt.ylabel(r'$R(t) (relative unit)$', fontsize=15)
     plt.savefig(datadir+'temporal_factor.'+fig_format,
                 format=fig_format, bbox_inches='tight')
-
+    plt.close()
 
 
 # Program execution time
