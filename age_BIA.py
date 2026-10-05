@@ -67,6 +67,7 @@ ls_core = 'dashed'
 temp_factor = None
 obs_bedrock = None
 comp_isochrones = None
+comp_iso_ages = None
 x_start = None
 solid_fraction = None
 
@@ -153,8 +154,11 @@ if comp_isochrones is not None:
     cp_iso_x = readarray[0, :]
     cp_iso_depth = readarray[1:, :]
     cp_iso_nb = cp_iso_depth.shape[0]
-    cp_iso_nb = cp_iso_depth.shape[0]
     cp_iso_z = np.interp(cp_iso_x, x_S, S_measure) - cp_iso_depth
+if comp_iso_ages is not None:
+    readarray = np.loadtxt(datadir+comp_iso_ages, unpack = True)
+    cp_iso_ages = readarray[0, :]
+    cp_iso_ages_sigma = readarray[1, :]
 
 # ---------------------------------------------------------------
 # Loading data from temporal_factor.txt
@@ -396,6 +400,12 @@ for k in range(len(accu_starts)):
 for i in range(len(x)-1):
     profs[i]['z'] = S[i]-np.interp(S_ie[i]-profs[i]['z_ie'], D_depth_ie, D_depth)
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
+    if comp_isochrones:
+        profs[i]['cp_iso_depth'] = np.zeros(cp_iso_nb)
+        profs[i]['cp_iso_z'] = np.zeros(cp_iso_nb)
+        for j in range(cp_iso_nb):
+            profs[i]['cp_iso_depth'][j] = np.interp(x[i], cp_iso_x, cp_iso_depth[j,:])
+            profs[i]['cp_iso_z'][j] = np.interp(x[i], cp_iso_x, cp_iso_z[j, :])
 
 print('Before creating figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
@@ -889,6 +899,8 @@ for name in ic:
         ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
     if ic[name]['comp'] != None:
         ax.plot(ic[name]['cp_age'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
+    if comp_isochrones is not None and comp_iso_ages is not None:
+        ax.plot(cp_iso_ages/1000., profs[ii]['cp_iso_z'], color='b', linestyle='None', marker='o', markersize=5)
     ax.set_xlabel('age (kyr)', color='b')
     ax.set_ylabel('z (m)')
     ax.set_ylim(top=S[ii], bottom=S[ii]-ic[name]['max_depth'])
