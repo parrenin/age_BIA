@@ -14,6 +14,7 @@ Ceci est un script temporaire.
 # TODO: implement output for ice cores
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
+# TODO: can we integrate thinning instead of differentiating the age?
 # TODO: Parametrize input files names?
 # TODO: Use a gridded interpolation for inversion, instead of fsolve?
 
@@ -201,6 +202,7 @@ for name in ic:
         ic[name]['cp_depth'], ic[name]['cp_age'], ic[name]['cp_x'],\
             ic[name]['cp_tau'] = np.loadtxt(datadir+ic[name]['comp'],
                                             unpack=True)
+
 # --------------------------
 # Interpolation and fluxes
 # --------------------------
@@ -940,6 +942,8 @@ for name in ic:
               (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
         zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
         ax3.plot(tau, zz, color='orange')
+    if ic[name]['comp'] != None:
+        ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
     ax3.set_xlabel('vertical thinning', color='orange', fontsize=15)
     ax3.spines['top'].set_color('orange')
     ax3.spines['top'].set_position(('axes', 1.1))
