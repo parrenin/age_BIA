@@ -13,7 +13,7 @@ Ceci est un script temporaire.
 # TODO: output file for the flow line
 # TODO: implement output for ice cores
 # TODO: can we interpolate age/origin/etc. on the grid?
-# TODO: can we calculate thinning?
+# TODO: can we plot vertical thinning in 2D?
 # TODO: Parametrize input files names?
 # TODO: Use a gridded interpolation for inversion, instead of fsolve?
 
@@ -290,7 +290,7 @@ for i in range(1, len(x)-1):
 trajs = []
 profs = []
 for i in range(len(x)):
-    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': []}
+    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': [], 'a0': np.array([])}
     profs.append(prof)
     
 # Trajectories from the upstream border
@@ -305,9 +305,11 @@ if Q[0]>0:
         zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0]}
+        traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0], 'a0': a[0]}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
+        profs[0]['x0'] = np.append(profs[0]['x0'], x[0])
+        profs[0]['a0'] = np.append(profs[0]['a0'], a[0])
         j = 1
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
@@ -326,6 +328,7 @@ if Q[0]>0:
                 profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                 profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
+                profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
             elif Q[j] < qq or traj['out'] == 'surf':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
@@ -354,10 +357,11 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i]}
+        traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i], 'a0': a[i]}
         profs[i]['z_ie'] = np.append(profs[i]['z_ie'], traj['z_ie'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
+        profs[i]['a0'] = np.append(profs[i]['a0'], traj['a0'])
         j = i+1
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])
@@ -379,6 +383,7 @@ for k in range(len(accu_starts)):
                     profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                     profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
+                    profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
                     if k>0 and i == istart:
                         profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
                 except:
@@ -399,6 +404,7 @@ for k in range(len(accu_starts)):
 for i in range(len(x)-1):
     profs[i]['z'] = S[i]-np.interp(S_ie[i]-profs[i]['z_ie'], D_depth_ie, D_depth)
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
+#    profs[i]['tau'] = (profs[i]['age'][1:]-profs[i]['age'][:-1]) / (profs[i]['a0'][1:]+profs[i]['a0'][:-1]) *2
     if comp_isochrones:
         profs[i]['cp_iso_depth'] = np.zeros(cp_iso_nb)
         profs[i]['cp_iso_z'] = np.zeros(cp_iso_nb)
@@ -927,6 +933,17 @@ for name in ic:
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
     ax2.spines['bottom'].set_visible(False)
+    ax3=ax.twiny()
+    for i in range(len(prof_domains)-1):
+        tau = (profs[ii]['z_ie'][prof_domains[i]+1:prof_domains[i+1]]-profs[ii]['z_ie'][prof_domains[i]:prof_domains[i+1]-1]) / \
+              (-profs[ii]['steady_age'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['steady_age'][prof_domains[i]:prof_domains[i+1]-1]) / \
+              (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
+        zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
+        ax3.plot(tau, zz, color='orange')
+    ax3.set_xlabel('vertical thinning', color='orange', fontsize=15)
+    ax3.spines['top'].set_color('orange')
+    ax3.spines['top'].set_position(('axes', 1.1))
+    ax3.tick_params(axis='x', colors='orange')
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
