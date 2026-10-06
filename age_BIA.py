@@ -14,8 +14,6 @@ Ceci est un script temporaire.
 # TODO: implement output for ice cores
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we calculate thinning?
-# TODO: Plot isochrones on the ice core figure
-# TODO: Can we factorize the code in a function for figures?
 # TODO: Parametrize input files names?
 # TODO: Use a gridded interpolation for inversion, instead of fsolve?
 
@@ -176,6 +174,7 @@ if temp_factor != None:
 else:
     age_R = np.array([0, 1e9])
     steady_age_R = age_R
+    R = np.array([1, 1])
 
 # ----------------------------------------------------------------
 # Loading data from solid_fraction.txt
@@ -490,13 +489,14 @@ for name in ic:
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
-ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
+    
 ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
@@ -520,8 +520,8 @@ for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$z$ (m)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('elevation (m)', fontsize=19)
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
@@ -542,14 +542,13 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
-ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
-ax1b.tick_params(axis='y', colors='r')
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -572,7 +571,7 @@ for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
@@ -596,14 +595,14 @@ print('After simple trajectories figures:',
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
-ax1.plot(x, a, color='k', linewidth=2)
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
-ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
-ax1b.tick_params(axis='y', colors='r')
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -637,13 +636,14 @@ for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$z$ (m)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('elevation (m)', fontsize=19)
 
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
-plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='age (kyr)', size=18)
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
@@ -663,14 +663,14 @@ plt.close()
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
-ax1.plot(x, a, color='k', linewidth=2)
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
-ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r')
-ax1b.tick_params(axis='y', colors='r')
+ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -704,14 +704,15 @@ for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
     ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
-plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='age (kyr)', size=18)
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
@@ -736,13 +737,13 @@ print('After color trajectories figures:',
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
-ax1b.set_ylabel('surface age (kyr)', color='r')
+ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
 if top < 1.:
@@ -784,13 +785,14 @@ for unconf in unconf_list:
 
 
 
-ax2.set_xlabel(r'$x$ (km)', fontsize=19)
-ax2.set_ylabel(r'$z$ (m)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('elevation (m)', fontsize=19)
 
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='age (kyr)', size=18)
 cb.add_lines(cp)
 
 
@@ -812,13 +814,13 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a, color='k', linewidth=2)
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
-ax1.set_ylabel(r'$\bar{a}$ (m/yr)', fontsize=19)
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
-ax1b.set_ylabel('surface age (kyr)', color='r')
+ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
 if top < 1.:
@@ -858,14 +860,15 @@ for unconf in unconf_list:
              linestyle='--')
 
 
-ax2.set_xlabel('$x$ (km)', fontsize=19)
-ax2.set_ylabel('depth (m)', fontsize=19)
+ax2.set_xlabel('horizontal distance (km)', fontsize=18)
+ax2.set_ylabel('depth (m)', fontsize=18)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
 sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, label='age (kyr)', pad=-0.02)
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='age (kyr)', size=18)
 cb.add_lines(cp)
 
 
@@ -901,8 +904,8 @@ for name in ic:
         ax.plot(ic[name]['cp_age'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
     if comp_isochrones is not None and comp_iso_ages is not None:
         ax.plot(cp_iso_ages/1000., profs[ii]['cp_iso_z'], color='b', linestyle='None', marker='o', markersize=5)
-    ax.set_xlabel('age (kyr)', color='b')
-    ax.set_ylabel('z (m)')
+    ax.set_xlabel('age (kyr)', color='b', fontsize=15)
+    ax.set_ylabel('elevation (m)', fontsize=15)
     ax.set_ylim(top=S[ii], bottom=S[ii]-ic[name]['max_depth'])
     jj = np.argmin(np.abs(profs[ii]['z']-(S[ii]-ic[name]['max_depth'])))
     ax.set_xlim(left=0, right=profs[ii]['age'][jj]/1000.)
@@ -912,7 +915,7 @@ for name in ic:
     ax.hlines(profs[ii]['z'][prof_domains[1:-1]], x_low, x_up, linestyles='--', linewidth=3., color = 'k')
     axb = ax.twinx()
     axb.set_ylim(top=0., bottom=S[ii]-B[ii])
-    axb.set_ylabel('depth (m)')
+    axb.set_ylabel('depth (m)', fontsize=15)
     ax2 = ax.twiny()
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
@@ -920,7 +923,7 @@ for name in ic:
         ax.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
     ax2.set_xlim(left=0)
     ax2.set_xlim(right=ic[name]['x'])
-    ax2.set_xlabel('ice origin (km)', color='r')
+    ax2.set_xlabel('ice origin (km)', color='r', fontsize=15)
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
     ax2.spines['bottom'].set_visible(False)
