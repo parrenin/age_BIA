@@ -10,7 +10,6 @@ Ceci est un script temporaire.
 # TDO: use panda for inputs
 # TODO: comparison file for surface velocity
 # TODO: comparison files for unconformities
-# TODO: output file for the flow line
 # TODO: implement output for ice cores
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
@@ -69,6 +68,7 @@ comp_isochrones = None
 comp_iso_ages = None
 x_start = None
 solid_fraction = None
+output_fl = False
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -966,6 +966,16 @@ if temp_factor != None:
                 format=fig_format, bbox_inches='tight')
     plt.close()
 
+
+# ----------------------------------------------------------------------
+# OUTPUTS
+# ----------------------------------------------------------------------
+
+# output distance, total flux, melting flux, accu, melting, surf_vel, Y
+if output_fl:
+    output = np.vstack((x, Y, a*R[0], m*R[0], Q, Qm, surf_vel))
+    np.savetxt(datadir+'flow_line_output.txt', np.transpose(output),
+               header='x(km) tube_width PD_accu(m/yr) PD_melting(m/yr) total_flux melting_flux PD_surf_velocity(m/yr)')
 
 # Program execution time
 MESSAGE = 'Program execution time: '+str(time.perf_counter()-START_TIME)+' s.'
