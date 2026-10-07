@@ -68,6 +68,7 @@ obs_bedrock = None
 comp_isochrones = None
 comp_iso_ages = None
 comp_surf_vel = None
+comp_surf_age = None
 x_start = None
 solid_fraction = None
 output_fl = False
@@ -206,10 +207,12 @@ for name in ic:
                                             unpack=True)
 
 # -----------------------------------------------------------
-# Reading of comparison files for surface velocity
+# Reading of comparison files for surface velocity and age
 # -----------------------------------------------------------
 if comp_surf_vel != None:
     cp_surf_vel_x, cp_surf_vel_vel = np.loadtxt(datadir+comp_surf_vel, unpack=True)
+if comp_surf_age != None:
+    cp_surf_age_x, cp_surf_age_age = np.loadtxt(datadir+comp_surf_age, unpack=True)
 
 # --------------------------
 # Interpolation and fluxes
@@ -763,6 +766,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -840,6 +844,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
