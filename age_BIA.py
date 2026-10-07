@@ -16,6 +16,7 @@ Ceci est un script temporaire.
 # TODO: can we integrate thinning instead of differentiating the age?
 # TODO: Parametrize input files names?
 # TODO: Use a gridded interpolation for inversion, instead of fsolve?
+# TODO: Comparison file for surface ages (markers insteady of line?)
 
 import sys
 import numpy as np
@@ -66,6 +67,7 @@ temp_factor = None
 obs_bedrock = None
 comp_isochrones = None
 comp_iso_ages = None
+comp_surf_vel = None
 x_start = None
 solid_fraction = None
 output_fl = False
@@ -195,13 +197,19 @@ else:
     D_depth = D_depth_ie
 
 # -----------------------------------------------------------
-# Reading of comparison files
+# Reading of comparison files for ice cores
 # -----------------------------------------------------------
 for name in ic:
     if ic[name]['comp'] is not None:
         ic[name]['cp_depth'], ic[name]['cp_age'], ic[name]['cp_x'],\
             ic[name]['cp_tau'] = np.loadtxt(datadir+ic[name]['comp'],
                                             unpack=True)
+
+# -----------------------------------------------------------
+# Reading of comparison files for surface velocity
+# -----------------------------------------------------------
+if comp_surf_vel != None:
+    cp_surf_vel_x, cp_surf_vel_vel = np.loadtxt(datadir+comp_surf_vel, unpack=True)
 
 # --------------------------
 # Interpolation and fluxes
@@ -504,6 +512,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
+ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
     
 ax1b.tick_params(axis='y', colors='r')
 
@@ -557,6 +566,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
+ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -611,6 +621,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
+ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -679,6 +690,7 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
+ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
