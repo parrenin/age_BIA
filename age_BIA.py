@@ -10,7 +10,7 @@ Ceci est un script temporaire.
 # TDO: use panda for inputs
 # TODO: comparison file for surface velocity
 # TODO: comparison files for unconformities
-# TODO: implement output for ice cores
+# TODO: ice core output: give thinning, but this not on the same grid!
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
 # TODO: can we integrate thinning instead of differentiating the age?
@@ -971,11 +971,23 @@ if temp_factor != None:
 # OUTPUTS
 # ----------------------------------------------------------------------
 
-# output distance, total flux, melting flux, accu, melting, surf_vel, Y
+# Flow line outputs
 if output_fl:
     output = np.vstack((x, Y, a*R[0], m*R[0], Q, Qm, surf_vel))
     np.savetxt(datadir+'flow_line_output.txt', np.transpose(output),
                header='x(km) tube_width PD_accu(m/yr) PD_melting(m/yr) total_flux melting_flux PD_surf_velocity(m/yr)')
+
+# Ice cores outputs
+for name in ic:
+    ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
+    output = np.vstack((S[ii]-profs[ii]['z'], profs[ii]['age'], profs[ii]['x0'], profs[ii]['a0']))
+    np.savetxt(datadir+name+'_ice_core_output.txt', np.transpose(output)[::-1],
+               header='depth(m) age(yr) origin(km) accu(m/yr')
+    
+    
+# ----------------------------------------------------------------------
+# Finishing
+# ----------------------------------------------------------------------
 
 # Program execution time
 MESSAGE = 'Program execution time: '+str(time.perf_counter()-START_TIME)+' s.'
