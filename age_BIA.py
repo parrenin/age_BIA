@@ -8,15 +8,13 @@ Ceci est un script temporaire.
 # TODO: plot Y
 # TODO: exact formula for the age increase
 # TDO: use panda for inputs
-# TODO: comparison file for surface velocity
+# TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
 # TODO: ice core output: give thinning, but this not on the same grid!
+# TODO: can we integrate thinning instead of differentiating the age?
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
-# TODO: can we integrate thinning instead of differentiating the age?
-# TODO: Parametrize input files names?
 # TODO: Use a gridded interpolation for inversion, instead of fsolve?
-# TODO: Comparison file for surface ages (markers insteady of line?)
 
 import sys
 import numpy as np
@@ -515,7 +513,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
-ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+if comp_surf_vel != None:
+    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
     
 ax1b.tick_params(axis='y', colors='r')
 
@@ -569,7 +568,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
-ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+if comp_surf_vel != None:
+    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -624,7 +624,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
-ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+if comp_surf_vel != None:
+    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -693,7 +694,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
-ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+if comp_surf_vel != None:
+    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -766,7 +768,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
-ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
+if comp_surf_age != None:
+    ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -844,7 +847,8 @@ ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
 ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
-ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
+if comp_surf_age != None:
+    ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -858,11 +862,12 @@ linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient li
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
     ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
     ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
+    print('test passed')
     ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
