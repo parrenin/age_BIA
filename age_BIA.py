@@ -514,8 +514,7 @@ ax1b = ax1.twinx()
 ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
-    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
-    
+    ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')  
 ax1b.tick_params(axis='y', colors='r')
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
@@ -570,8 +569,9 @@ ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+ax1b.tick_params(axis='y', colors='r')
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
     ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
     ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
@@ -626,6 +626,7 @@ ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
@@ -696,6 +697,7 @@ ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
+ax1b.tick_params(axis='y', colors='r')
 
 age_min = 0.
 age_max = max(np.nanmax(age/1000.) for age in age_list)
