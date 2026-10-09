@@ -867,7 +867,6 @@ if obs_bedrock is not None:
     ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
     ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    print('test passed')
     ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()

@@ -1,16 +1,17 @@
 x_left: 0.
 x_right: 12.
-x_step: 0.1
-z_step: 10.
-Q_left: 600.
+x_step: 0.05
+z_step: 50.
+Q_left: 10.
 Qm_left: 0.
+x_start: 0.03
 fig_age_iso: [1, 2, 5, 10, 20, 50, 100]
 step_traj: 5
 scaling_age: 100.
 fig_format: 'svg'
 ic:
     "IC1":
-        "x": 4.  # X coordinate of the drilling, in km
-        "max_depth": 600.
+        "x": 8.  # X coordinate of the drilling, in km
+        "max_depth": 495.
         "comp": Null
 
