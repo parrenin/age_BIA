@@ -14,7 +14,8 @@ Ceci est un script temporaire.
 # TODO: can we integrate thinning instead of differentiating the age?
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
-# TODO: Use a gridded interpolation for inversion, instead of fsolve?
+# TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
+# TODO: Output for isochrones
 
 import sys
 import numpy as np
@@ -26,11 +27,10 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import SymLogNorm
 import time
-import math
 import os
 import resource
 import warnings
-
+import pandas as pd
 
 # Registration of start time
 START_TIME = time.perf_counter()
@@ -200,9 +200,11 @@ else:
 # -----------------------------------------------------------
 for name in ic:
     if ic[name]['comp'] is not None:
-        ic[name]['cp_depth'], ic[name]['cp_age'], ic[name]['cp_x'],\
-            ic[name]['cp_tau'] = np.loadtxt(datadir+ic[name]['comp'],
-                                            unpack=True)
+        df = pd.read_csv(datadir+ic[name]['comp'], sep=None, comment='#', engine='python')
+        ic[name]['cp_depth'] = df['depth'].to_numpy(dtype=float)
+        ic[name]['cp_age'] = df['age'].to_numpy(dtype=float)
+        ic[name]['cp_x'] = df['x_origin'].to_numpy(dtype=float)
+        ic[name]['cp_tau'] = df['thinning'].to_numpy(dtype=float)
 
 # -----------------------------------------------------------
 # Reading of comparison files for surface velocity and age
@@ -932,7 +934,7 @@ for name in ic:
     for i in range(len(prof_domains)-1):
         ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
     if ic[name]['comp'] != None:
-        ax.plot(ic[name]['cp_age'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
+        ax.plot(ic[name]['cp_age']/1000., S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
     if comp_isochrones is not None and comp_iso_ages is not None:
         ax.plot(cp_iso_ages/1000., profs[ii]['cp_iso_z'], color='b', linestyle='None', marker='o', markersize=5)
     ax.set_xlabel('age (kyr)', color='b', fontsize=15)
@@ -951,7 +953,7 @@ for name in ic:
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
     if ic[name]['comp'] != None:
-        ax.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='b', linestyle='--')
+        ax2.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='r', linestyle='--')
     ax2.set_xlim(left=0)
     ax2.set_xlim(right=ic[name]['x'])
     ax2.set_xlabel('ice origin (km)', color='r', fontsize=15)

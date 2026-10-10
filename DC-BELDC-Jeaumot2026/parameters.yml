@@ -20,8 +20,8 @@ ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km
         "max_depth": 3189.
-        "comp": 'EDC_AICC2023.txt'
+        "comp": 'EDC_Jeaumot2026.txt'
     "BELDC":
         "x": 39.8  # X coordinate of the drilling, in km
         "max_depth": 2500.
-        "comp": Null
+        "comp": 'BELDC_Jeaumot2026.txt'
