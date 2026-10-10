@@ -4,13 +4,13 @@ x_step: 0.1
 z_step: 50.
 Q_left: 0.
 Qm_left: 0.
-fig_age_iso: [73, 85, 90, 97, 113, 121, 132, 160, 180, 203, 215, 240, 243, 304, 321, 336, 367, 397, 476]
+fig_age_iso: [73.2, 84.8, 90.8, 97.7, 115.8, 122.9, 133.2, 159.6, 178.2, 202.5, 214.4, 239.9, 243.2, 305.3, 320.4, 335.7, 367.3, 399.5, 475.3]
 step_traj: 10
 scaling_age: 100.
 fig_format: 'svg'
 temp_factor: 'temporal_factor.txt'
 obs_bedrock: 'real_thickness.txt'
-comp_isochrones: 'isochrones.txt'
+comp_isochrones: 'isochrones_age_flow_line.txt'
 comp_iso_ages: 'isochrones-ages.txt'
 solid_fraction: 'solid_fraction.txt'
 x_start: 1.1
