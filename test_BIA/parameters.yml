@@ -11,7 +11,7 @@ scaling_age: 100.
 fig_format: 'svg'
 ic:
     "IC1":
-        "x": 8.  # X coordinate of the drilling, in km
-        "max_depth": 495.
+        "x": 10.  # X coordinate of the drilling, in km
+        "max_depth": 250.
         "comp": Null
 
