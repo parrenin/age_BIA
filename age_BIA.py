@@ -11,7 +11,6 @@ Ceci est un script temporaire.
 # TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
 # TODO: ice core output: give thinning, but this not on the same grid!
-# TODO: can we integrate thinning instead of differentiating the age?
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: can we plot vertical thinning in 2D?
 # TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
@@ -332,7 +331,7 @@ if Q[0]>0:
         zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        tauint = np.array([1/a[0]*(fct_domega_dzeta(1, p[0]) -fct_domega_dzeta(zeta, p[0]))])
+        tauint = np.array([H[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
         tau = np.array([omega])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
@@ -422,7 +421,6 @@ for k in range(len(accu_starts)):
             if Q[j] >= Q[i] and Qm[j] <= Q[i] and traj['out'] == None :
                 omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
-                zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
                 zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
                 ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
