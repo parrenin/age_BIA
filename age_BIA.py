@@ -16,6 +16,15 @@ Ceci est un script temporaire.
 # TODO: can we plot vertical thinning in 2D?
 # TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
 # TODO: Output for isochrones
+# TODO: Clean parameter file (regroup parameters, etc.)
+# TODO: Remove 'a0' and 'x0' from trajs and profs since we have 'i0' now
+# TODO: Can we take ux with an average zeta and an average p? Instead of the geometric mean of ux1 and ux2. This would prevent a singularity at bedrock.
+# TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
+# TODO: trajs and profs: store zeta, not z_ie.
+# TODO: Put NaNs for unconformities in ice cores outputs.
+# TODO: Rename tauint in kappaint?
+# TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
+
 
 import sys
 import numpy as np
@@ -85,6 +94,9 @@ def fct_omega(zeta, p):
 
 def fct_domega_dzeta(zeta, p):
     return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
+
+def fct_d2omega_dzeta2(zeta, p):
+    return (p + 2) * (1 - zeta)**p
 
 def fct_zeta(omega, p):
     # Définir la fonction dont on cherche la racine
@@ -303,7 +315,9 @@ for i in range(1, len(x)-1):
 trajs = []
 profs = []
 for i in range(len(x)):
-    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]), 'x0': np.array([]), 'unconf': [], 'a0': np.array([])}
+    prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]),
+            'x0': np.array([]), 'unconf': [], 'a0': np.array([]), 'i0': np.array([]),
+            'tau': np.array([])}
     profs.append(prof)
     
 # Trajectories from the upstream border
@@ -318,11 +332,17 @@ if Q[0]>0:
         zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream', 'out': None, 'x0': x[0], 'a0': a[0]}
+        tauint = np.array([1/a[0]*(fct_domega_dzeta(1, p[0]) -fct_domega_dzeta(zeta, p[0]))])
+        tau = np.array([omega])
+        traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
+                'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
+                'tau': tau}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
         profs[0]['x0'] = np.append(profs[0]['x0'], x[0])
         profs[0]['a0'] = np.append(profs[0]['a0'], a[0])
+        profs[0]['i0'] = np.append(profs[0]['a0'], 0)
+        profs[0]['tau'] = np.append(profs[0]['a0'], tau[0])
         j = 1
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])  # FIXME: seems suboptimal, we might just use x
@@ -330,25 +350,41 @@ if Q[0]>0:
                 omega = (qq-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
-                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta((traj['z_ie'][-2]-B[j-1])/H_ie[j-1], p[j-1])
-                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta((traj['z_ie'][-1]-B[j])/H_ie[j], p[j])
+                zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
+#                zeta2 = (traj['z_ie'][-1]-B[j])/H_ie[j]
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
+                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta(zeta, p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*qq*H[j] \
+                    /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
+                    *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
+                tauint = traj['tauint'][-1]+dtauint
+                traj['tauint'] = np.append(traj['tauint'], tauint)
+                i0 = traj['i0']
+                tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H[j]) \
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]) \
+                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]*tauint)
+                traj['tau'] = np.append(traj['tau'], tau)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                 profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
                 profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                 profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
+                profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
+                profs[j]['tau'] = np.append(profs[j]['tau'], traj['tau'][-1])
             elif Q[j] < qq or traj['out'] == 'surf':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'surf'
             elif Qm[j] > qq or traj['out'] == 'bed':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'bed'
             j += 1
         traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
@@ -370,33 +406,50 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None, 'x0': x[i], 'a0': a[i]}
+        tauint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
+        tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
+        traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
+                'x0': x[i], 'a0': a[i], 'i0': i, 'tauint': tauint, 'tau': tau}
         profs[i]['z_ie'] = np.append(profs[i]['z_ie'], traj['z_ie'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
+        profs[i]['tau'] = np.append(profs[i]['tau'], traj['tau'][-1])
         profs[i]['x0'] = np.append(profs[i]['x0'], traj['x0'])
         profs[i]['a0'] = np.append(profs[i]['a0'], traj['a0'])
+        profs[i]['i0'] = np.append(profs[i]['i0'], traj['i0'])
         j = i+1
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])
             if Q[j] >= Q[i] and Qm[j] <= Q[i] and traj['out'] == None :
                 omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
+                zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
-                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta((traj['z_ie'][-2]-B[j-1])/H_ie[j-1], p[j-1])
-                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta((traj['z_ie'][-1]-B[j])/H_ie[j], p[j])
+                zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
+                ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta(zeta, p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                # if len(trajs) == 243:
-                #     print(omega, zeta)
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*Q[i]*H[j] \
+                    /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
+                    *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
+                tauint = traj['tauint'][-1]+dtauint
+                traj['tauint'] = np.append(traj['tauint'], tauint)
+                i0 = traj['i0']
+                tau = Q[i]/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H[j]) \
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]) \
+                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]*tauint)
+                traj['tau'] = np.append(traj['tau'], tau)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 try: #Remove try now that we initialize profs
                     profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
                     profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
+                    profs[j]['tau'] = np.append(profs[j]['tau'], traj['tau'][-1])
                     profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
                     profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
+                    profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
                     if k>0 and i == istart:
                         profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
                 except:
@@ -404,10 +457,12 @@ for k in range(len(accu_starts)):
             elif Q[j] < Q[i] or traj['out'] == 'surf':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'surf'
             elif Qm[j] > Q[i] or traj['out'] == 'bed':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
+                traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'bed'
             j += 1
         traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
@@ -962,11 +1017,12 @@ for name in ic:
     ax2.spines['bottom'].set_visible(False)
     ax3=ax.twiny()
     for i in range(len(prof_domains)-1):
-        tau = (profs[ii]['z_ie'][prof_domains[i]+1:prof_domains[i+1]]-profs[ii]['z_ie'][prof_domains[i]:prof_domains[i+1]-1]) / \
-              (-profs[ii]['steady_age'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['steady_age'][prof_domains[i]:prof_domains[i+1]-1]) / \
-              (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
-        zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
-        ax3.plot(tau, zz, color='orange')
+        # tau = (profs[ii]['z_ie'][prof_domains[i]+1:prof_domains[i+1]]-profs[ii]['z_ie'][prof_domains[i]:prof_domains[i+1]-1]) / \
+        #       (-profs[ii]['steady_age'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['steady_age'][prof_domains[i]:prof_domains[i+1]-1]) / \
+        #       (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
+        # zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
+        # ax3.plot(tau, zz, color='orange')
+        ax3.plot(profs[ii]['tau'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='orange')
     if ic[name]['comp'] != None:
         ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
     ax3.set_xlabel('vertical thinning', color='orange', fontsize=15)
@@ -1005,9 +1061,9 @@ if output_fl:
 # Ice cores outputs
 for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
-    output = np.vstack((S[ii]-profs[ii]['z'], profs[ii]['age'], profs[ii]['x0'], profs[ii]['a0']))
+    output = np.vstack((S[ii]-profs[ii]['z'], profs[ii]['age'], profs[ii]['x0'], profs[ii]['tau'], profs[ii]['a0']))
     np.savetxt(datadir+name+'_ice_core_output.txt', np.transpose(output)[::-1],
-               header='depth(m) age(yr) origin(km) accu(m/yr')
+               header='depth(m) age(yr) origin(km) thinning accu(m/yr')
     
     
 # ----------------------------------------------------------------------
