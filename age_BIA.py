@@ -1033,7 +1033,7 @@ ax2.set_ylabel('elevation (m)', fontsize=19)
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
-cb.set_label(label='vertical thinning ratio', size=18)
+cb.set_label(label='vertical thinning ratio (no unit)', size=18)
 
 
 for name in ic:
@@ -1100,7 +1100,7 @@ ax2.set_ylim(ax2.get_ylim()[::-1])
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
-cb.set_label(label='vertical thinning ratio', size=18)
+cb.set_label(label='vertical thinning ratio (no unit)', size=18)
 
 
 for name in ic:
