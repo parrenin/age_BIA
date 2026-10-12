@@ -488,11 +488,14 @@ print('Before creating figures:',
 # ----------------------------------------
 
 surf_steady_age = np.zeros_like(x)
+surf_tau = np.zeros_like(x)
 for i in range(len(x)):
-    try:
+    try: #FIXME: can we avoid this try by being smarter?
         surf_steady_age[i] = interp1d(profs[i]['z'], profs[i]['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
+        surf_tau[i] = interp1d(profs[i]['z'], profs[i]['tau'], kind='linear', fill_value="extrapolate")(S[i])
     except:
         surf_steady_age[i] = np.nan
+        surf_tau[i] = np.nan
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)        
 
 # ----------------------------------------
@@ -503,12 +506,14 @@ surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 x_list = []
 z_list = []
 age_list = []
+tau_list = []
 in_list = []
 for i in range(0, len(trajs), step_traj):
     traj = trajs[i]
     x_list.append(traj['x'])
     z_list.append(traj['z'])
     age_list.append(traj['age'])
+    tau_list.append(traj['tau'])
     in_list.append(traj['in'])
 
 # Creation of domains and unformities
@@ -516,6 +521,7 @@ for i in range(0, len(trajs), step_traj):
 mat_x = np.array([trajs[0]['x']])
 mat_z = np.array([trajs[0]['z']])
 mat_age = np.array([trajs[0]['age']])
+mat_tau = np.array([trajs[0]['tau']])
 if len(index_unconf) ==0:
     end = len(trajs)
 else:
@@ -525,7 +531,8 @@ for i in range(1, end):
     mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
     mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
     mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age}]
+    mat_tau = np.concatenate([mat_tau, np.array([trajs[i]['tau']])])
+domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age, 'mat_tau': mat_tau}]
 unconf_list = []
 
 
@@ -535,6 +542,7 @@ for k in range(len(index_unconf)):
     mat_x = np.array([trajs[index_unconf[k]]['x']])
     mat_z = np.array([trajs[index_unconf[k]]['z']])
     mat_age = np.array([trajs[index_unconf[k]]['age']])
+    mat_tau = np.array([trajs[index_unconf[k]]['tau']])
     if k == len(index_unconf)-1:
         end = len(trajs)
     else:
@@ -544,7 +552,8 @@ for k in range(len(index_unconf)):
         mat_x = np.concatenate([mat_x, np.array([trajs[i]['x']])])
         mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
         mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
-    domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age})
+        mat_tau = np.concatenate([mat_tau, np.array([trajs[i]['tau']])])
+    domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age, 'mat_tau': mat_tau})
 
 
 # Quantities for ice cores
@@ -971,6 +980,141 @@ plt.close()
 
 
 print('After age figures:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
+
+
+# -----------------
+# thinning figure
+# -----------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.set_ylabel('surface thinning', color='r', fontsize=14)
+ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if bottom > 0.9:
+    bottom = 0.9
+    top = 1.1
+ax1b.set_ylim(bottom, top)
+
+tau_min = 0.
+tau_max = max(np.nanmax(tau/1000.) for tau in tau_list)
+
+ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
+
+
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=1000,
+                 cmap='plasma_r')
+
+for unconf in unconf_list:
+    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
+
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('elevation (m)', fontsize=19)
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='plasma_r')
+sm.set_array([])
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='vertical thinning ratio', size=18)
+
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'thinning_x_z.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+# ----------------------------
+# thinning figure vs depth
+# ----------------------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.set_ylabel('surface thinning', color='r', fontsize=14)
+ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if bottom > 0.9:
+    bottom = 0.9
+    top = 1.1
+ax1b.set_ylim(bottom, top)
+
+tau_min = 0.
+tau_max = max(np.nanmax(tau/1000.) for tau in tau_list)
+
+ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
+
+
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=1000,
+                 cmap='plasma_r')
+
+for unconf in unconf_list:
+    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
+
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('depth (m)', fontsize=19)
+ax2.set_ylim(ax2.get_ylim()[::-1])
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='plasma_r')
+sm.set_array([])
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='vertical thinning ratio', size=18)
+
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], 0.), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'thinning_x_depth.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+print('After thinning figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
 
 
