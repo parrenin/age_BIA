@@ -21,7 +21,7 @@ Ceci est un script temporaire.
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Rename tauint in kappaint?
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
-
+# TODO: Why thinning does not always increase at unconformities?
 
 import sys
 import numpy as np
@@ -31,7 +31,7 @@ from scipy.interpolate import interp1d
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from matplotlib.colors import SymLogNorm
+from matplotlib.colors import SymLogNorm, Normalize
 import time
 import os
 import resource
@@ -1003,7 +1003,8 @@ if bottom > 0.9 and top < 1.1:
 ax1b.set_ylim(bottom, top)
 
 tau_min = 0.
-tau_max = max(np.nanmax(tau/1000.) for tau in tau_list)
+tau_max = max(np.nanmax(tau) for tau in tau_list)
+norm = Normalize(vmin=tau_min, vmax=tau_max)
 
 ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -1019,7 +1020,7 @@ ax2top.xaxis.set_ticks([])
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=1000,
-                 cmap='plasma_r')
+                 cmap='plasma_r', norm=norm)
 
 for unconf in unconf_list:
     ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1029,7 +1030,7 @@ ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('elevation (m)', fontsize=19)
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma_r')
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio', size=18)
@@ -1068,7 +1069,8 @@ if bottom > 0.9:
 ax1b.set_ylim(bottom, top)
 
 tau_min = 0.
-tau_max = max(np.nanmax(tau/1000.) for tau in tau_list)
+tau_max = max(np.nanmax(tau) for tau in tau_list)
+norm = Normalize(vmin=tau_min, vmax=tau_max)
 
 ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -1084,10 +1086,10 @@ ax2top.xaxis.set_ticks([])
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=1000,
-                 cmap='plasma_r')
+                 cmap='plasma_r', norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -1095,7 +1097,7 @@ ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma_r')
+sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio', size=18)
