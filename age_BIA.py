@@ -864,8 +864,10 @@ if comp_isochrones is not None:
         ax2.plot(cp_iso_x, cp_iso_z[i, :],
                  color='w', linewidth=1)
 
+normalized_levels = np.linspace(0, 1, 100)
+levels = norm.inverse(normalized_levels)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=1000,
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels,
                  cmap='plasma_r', norm=norm)
     cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
@@ -942,9 +944,11 @@ if comp_isochrones is not None:
     for i in range(cp_iso_nb):
         ax2.plot(cp_iso_x, cp_iso_depth[i, :],
                  color='w', linewidth=1)
-
+        
+normalized_levels = np.linspace(0, 1, 100)
+levels = norm.inverse(normalized_levels)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=1000,
+    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=levels,
                  cmap='plasma_r', norm=norm)
     cp = ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
@@ -1017,9 +1021,8 @@ ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
 ax2top.xaxis.set_ticks([])
 
-
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=1000,
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
 
 for unconf in unconf_list:
@@ -1085,7 +1088,7 @@ ax2top.xaxis.set_ticks([])
 
 
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=1000,
+    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
 
 for unconf in unconf_list:
