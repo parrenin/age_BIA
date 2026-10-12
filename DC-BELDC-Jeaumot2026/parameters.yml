@@ -15,7 +15,7 @@ comp_iso_ages: 'isochrones-ages.txt'
 solid_fraction: 'solid_fraction.txt'
 x_start: 1.1
 output_fl: True
-comp_surf_vel: 'surf_velocity.txt'
+comp_surf_vel: 'surf_velocity_age_flow_line.txt'
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km
