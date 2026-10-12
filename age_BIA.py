@@ -12,7 +12,6 @@ Ceci est un script temporaire.
 # TODO: comparison files for unconformities
 # TODO: ice core output: give thinning, but this not on the same grid!
 # TODO: can we interpolate age/origin/etc. on the grid?
-# TODO: can we plot vertical thinning in 2D?
 # TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
 # TODO: Output for isochrones
 # TODO: Clean parameter file (regroup parameters, etc.)
@@ -20,7 +19,6 @@ Ceci est un script temporaire.
 # TODO: Can we take ux with an average zeta and an average p? Instead of the geometric mean of ux1 and ux2. This would prevent a singularity at bedrock.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
-# TODO: Put NaNs for unconformities in ice cores outputs.
 # TODO: Rename tauint in kappaint?
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
 
@@ -999,7 +997,7 @@ ax1b.plot(x, surf_tau, color='r', linewidth=2)
 ax1b.set_ylabel('surface thinning', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
-if bottom > 0.9:
+if bottom > 0.9 and top < 1.1:
     bottom = 0.9
     top = 1.1
 ax1b.set_ylim(bottom, top)
@@ -1127,7 +1125,7 @@ for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title(name + ' ice core', fontsize=20)
-    prof_domains = profs[ii]['unconf']
+    prof_domains = profs[ii]['unconf'].copy()
     prof_domains.insert(0, 0)
     prof_domains.append(len(profs[ii]['z']))
     for i in range(len(prof_domains)-1):
@@ -1206,6 +1204,9 @@ if output_fl:
 for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
     output = np.vstack((S[ii]-profs[ii]['z'], profs[ii]['age'], profs[ii]['x0'], profs[ii]['tau'], profs[ii]['a0']))
+    prof_domains = profs[ii]['unconf']
+    for i in range(len(prof_domains)):
+        output = np.insert(output, prof_domains[i]+i, np.nan, axis=1)
     np.savetxt(datadir+name+'_ice_core_output.txt', np.transpose(output)[::-1],
                header='depth(m) age(yr) origin(km) thinning accu(m/yr')
     
