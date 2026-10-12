@@ -121,7 +121,10 @@ def integrate_age(zeta_min, zeta_max, p, H, a, mu):
     )
     return result
 
-
+def dkappa_dOmega_Omega(j, qq, zeta):
+    return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, p[j])**3 \
+        *fct_d2omega_dzeta2(zeta, p[j])
+    
 
 
 # -----------------------------------------------------
@@ -357,9 +360,8 @@ if Q[0]>0:
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*qq*H_ie[j] \
-                    /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
-                    *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * \
+                    np.sqrt(dkappa_dOmega_Omega(j, qq, zeta) * dkappa_dOmega_Omega(j-1, qq, zetab))
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
@@ -429,9 +431,8 @@ for k in range(len(accu_starts)):
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*Q[i]*H_ie[j] \
-                    /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
-                    *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) *  \
+                    np.sqrt(dkappa_dOmega_Omega(j, Q[i], zeta) * dkappa_dOmega_Omega(j-1, Q[i], zetab))
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
