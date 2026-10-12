@@ -1020,7 +1020,7 @@ ax2top.xaxis.set_ticks([])
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=1000,
-                 cmap='plasma_r', norm=norm)
+                 cmap='plasma', norm=norm)
 
 for unconf in unconf_list:
     ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1030,7 +1030,7 @@ ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('elevation (m)', fontsize=19)
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
+sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio', size=18)
@@ -1086,7 +1086,7 @@ ax2top.xaxis.set_ticks([])
 
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=1000,
-                 cmap='plasma_r', norm=norm)
+                 cmap='plasma', norm=norm)
 
 for unconf in unconf_list:
     ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1097,7 +1097,7 @@ ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm)
+sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio', size=18)
@@ -1165,7 +1165,7 @@ for name in ic:
         #       (-profs[ii]['steady_age'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['steady_age'][prof_domains[i]:prof_domains[i+1]-1]) / \
         #       (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
         # zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
-        # ax3.plot(tau, zz, color='orange')
+        # ax3.plot(tau, zz, color='orange', linestyle='--')
         ax3.plot(profs[ii]['tau'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='orange')
     if ic[name]['comp'] != None:
         ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
