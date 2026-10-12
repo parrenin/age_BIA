@@ -331,7 +331,7 @@ if Q[0]>0:
         zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        tauint = np.array([H[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
+        tauint = np.array([H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
         tau = np.array([omega])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
@@ -357,15 +357,15 @@ if Q[0]>0:
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*qq*H[j] \
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*qq*H_ie[j] \
                     /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
                     *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
-                tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]) \
-                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]*tauint)
+                tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) \
+                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint)
                 traj['tau'] = np.append(traj['tau'], tau)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
@@ -429,15 +429,15 @@ for k in range(len(accu_starts)):
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*Q[i]*H[j] \
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * Y[j]/QH[j]**2*Q[i]*H_ie[j] \
                     /fct_domega_dzeta((zeta+zetab)/2, (p[j-1]+p[j])/2)**3 \
                     *fct_d2omega_dzeta2((zeta+zetab)/2, (p[j-1]+p[j])/2)
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
-                tau = Q[i]/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]) \
-                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H[i0]*tauint)
+                tau = Q[i]/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) \
+                    / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint)
                 traj['tau'] = np.append(traj['tau'], tau)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
@@ -971,6 +971,7 @@ plt.close()
 
 print('After age figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
+
 
 
 # ----------------------------
