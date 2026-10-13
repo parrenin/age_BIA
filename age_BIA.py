@@ -22,6 +22,7 @@ Ceci est un script temporaire.
 # TODO: Rename tauint in kappaint?
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
 # TODO: Why thinning does not always increase at unconformities?
+# TODO: Put levels every 0.1 for thinning figure
 
 import sys
 import numpy as np
@@ -333,7 +334,7 @@ if Q[0]>0:
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
         tauint = np.array([H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
-        tau = np.array([omega])
+        tau = np.array([qq/Q[0]])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
                 'tau': tau}
