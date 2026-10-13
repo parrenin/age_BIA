@@ -22,7 +22,7 @@ Ceci est un script temporaire.
 # TODO: Rename tauint in kappaint?
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
 # TODO: Why thinning does not always increase at unconformities?
-# TODO: Put levels every 0.1 for thinning figure
+# TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
 
 import sys
 import numpy as np
@@ -1022,9 +1022,12 @@ ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
 ax2top.xaxis.set_ticks([])
 
+levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
+    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=levels,
+                     colors='k', norm=norm)
 
 for unconf in unconf_list:
     ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1038,6 +1041,7 @@ sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio (no unit)', size=18)
+cb.add_lines(cp)
 
 
 for name in ic:
@@ -1087,10 +1091,12 @@ ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
 ax2top.xaxis.set_ticks([])
 
-
+levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
     ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
+    ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=levels,
+                 colors='k', norm=norm)
 
 for unconf in unconf_list:
     ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1105,6 +1111,7 @@ sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio (no unit)', size=18)
+cb.add_lines(cp)
 
 
 for name in ic:
