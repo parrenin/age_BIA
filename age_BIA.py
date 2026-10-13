@@ -1156,7 +1156,7 @@ for name in ic:
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
     if ic[name]['comp'] != None:
         ax2.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='r', linestyle='--')
-    ax2.set_xlim(left=0)
+    ax2.set_xlim(left=x_left)
     ax2.set_xlim(right=ic[name]['x'])
     ax2.set_xlabel('ice origin (km)', color='r', fontsize=15)
     ax2.spines['top'].set_color('r')
@@ -1176,6 +1176,7 @@ for name in ic:
     ax3.spines['top'].set_color('orange')
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
+    ax3.set_xlim(left=0)
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
