@@ -78,7 +78,7 @@ comp_surf_age = None
 x_start = None
 solid_fraction = None
 output_fl = False
-fig_ic_iso = False
+fig_ic_slope = False
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -1212,7 +1212,7 @@ for name in ic:
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
     ax3.set_xlim(left=0)
-    if fig_ic_iso:
+    if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
             ax4.plot(profs[ii]['iso_slope'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
