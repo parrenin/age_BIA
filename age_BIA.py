@@ -78,6 +78,7 @@ comp_surf_age = None
 x_start = None
 solid_fraction = None
 output_fl = False
+fig_ic_iso = False
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -1206,18 +1207,19 @@ for name in ic:
         ax3.plot(profs[ii]['tau'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='orange')
     if ic[name]['comp'] != None:
         ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
-    ax3.set_xlabel('vertical thinning', color='orange', fontsize=15)
+    ax3.set_xlabel('vertical thinning ratio (no unit)', color='orange', fontsize=15)
     ax3.spines['top'].set_color('orange')
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
     ax3.set_xlim(left=0)
-    ax4=ax.twiny()
-    for i in range(len(prof_domains)-1):
-        ax4.plot(profs[ii]['iso_slope'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
-    ax4.set_xlabel('layer slope', color='violet', fontsize=15)
-    ax4.spines['top'].set_color('violet')
-    ax4.spines['top'].set_position(('axes', 1.2))
-    ax4.tick_params(axis='x', colors='violet')
+    if fig_ic_iso:
+        ax4=ax.twiny()
+        for i in range(len(prof_domains)-1):
+            ax4.plot(profs[ii]['iso_slope'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
+        ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
+        ax4.spines['top'].set_color('violet')
+        ax4.spines['top'].set_position(('axes', 1.2))
+        ax4.tick_params(axis='x', colors='violet')
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
