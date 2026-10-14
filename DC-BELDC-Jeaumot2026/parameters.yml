@@ -16,6 +16,7 @@ solid_fraction: 'solid_fraction.txt'
 x_start: 1.1
 output_fl: True
 comp_surf_vel: 'surf_velocity_age_flow_line.txt'
+fig_ic_slope: True
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km

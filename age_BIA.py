@@ -320,7 +320,7 @@ profs = []
 for i in range(len(x)):
     prof = {'z_ie': np.array([]), 'z': np.array([]), 'steady_age': np.array([]),
             'x0': np.array([]), 'unconf': [], 'a0': np.array([]), 'i0': np.array([]),
-            'tau': np.array([]), 'zieb_iso': np.array([])}
+            'tau': np.array([]), 'zieb_iso': np.array([]), 'ziea_iso': np.array([])}
     profs.append(prof)
     
 # Trajectories from the upstream border
@@ -339,7 +339,7 @@ if Q[0]>0:
         tau = np.array([qq/Q[0]])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
-                'tau': tau, 'zieb_iso': np.array([np.nan])}
+                'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([])}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
         profs[0]['x0'] = np.append(profs[0]['x0'], x[0])
@@ -373,6 +373,8 @@ if Q[0]>0:
                 traj['tau'] = np.append(traj['tau'], tau)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
+                ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], ziea_iso)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
@@ -382,23 +384,30 @@ if Q[0]>0:
                 profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
                 profs[j]['tau'] = np.append(profs[j]['tau'], traj['tau'][-1])
                 profs[j]['zieb_iso'] = np.append(profs[j]['zieb_iso'], traj['zieb_iso'][-1])
+                profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], traj['ziea_iso'][-1])
             elif Q[j] < qq or traj['out'] == 'surf':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'surf'
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
             elif Qm[j] > qq or traj['out'] == 'bed':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'bed'
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
             j += 1
+        traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
         traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
         traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
-        traj['iso_slope'] = (traj['z'][1:]-traj['zb_iso'][1:])/(x[1:]-x[:-1])/1000.
+        traj['za_iso'] = np.nan*np.ones_like(traj['z'])
+        traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
+        traj['iso_slope_diff'] = np.nan*np.ones_like(traj['z'])
+        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'])[1:-1]/(x[2:]-x[:-2])/1000.
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
@@ -420,8 +429,10 @@ for k in range(len(accu_starts)):
         tauint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
         zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]])])
+        ziea_iso = np.ones(i)*np.nan
         traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
-                'x0': x[i], 'a0': a[i], 'i0': i, 'tauint': tauint, 'tau': tau, 'zieb_iso': zieb_iso}
+                'x0': x[i], 'a0': a[i], 'i0': i, 'tauint': tauint, 'tau': tau,
+                'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso}
         profs[i]['z_ie'] = np.append(profs[i]['z_ie'], traj['z_ie'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['tau'] = np.append(profs[i]['tau'], traj['tau'][-1])
@@ -454,6 +465,8 @@ for k in range(len(accu_starts)):
                 traj['tau'] = np.append(traj['tau'], tau)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
+                ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], ziea_iso)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
                 try: #Remove try now that we initialize profs
@@ -464,6 +477,7 @@ for k in range(len(accu_starts)):
                     profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
                     profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
                     profs[j]['zieb_iso'] = np.append(profs[j]['zieb_iso'], traj['zieb_iso'][-1])
+                    profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], traj['ziea_iso'][-1])
                     if k>0 and i == istart:
                         profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
                 except:
@@ -474,17 +488,23 @@ for k in range(len(accu_starts)):
                 traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'surf'
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
             elif Qm[j] > Q[i] or traj['out'] == 'bed':
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
                 traj['steady_age'] = np.append(traj['steady_age'], np.nan)
                 traj['tau'] = np.append(traj['tau'], np.nan)
                 traj['out'] = 'bed'
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
+                traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
             j += 1
+        traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
         traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
         traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
-        traj['iso_slope'] = (traj['z'][1:]-traj['zb_iso'][1:])/(x[1:]-x[:-1])/1000.
+        traj['za_iso'] = np.nan*np.ones_like(traj['z'])
+        traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
+        traj['iso_slope_diff'] = np.nan*np.ones_like(traj['z'])
+        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
@@ -492,10 +512,15 @@ for i in range(len(x)-1): #FIXME: why -1?
     profs[i]['z'] = S[i]-np.interp(S_ie[i]-profs[i]['z_ie'], D_depth_ie, D_depth)
     if i>=1:
         profs[i]['zb_iso'] = S[i-1]-np.interp(S_ie[i-1]-profs[i]['zieb_iso'], D_depth_ie, D_depth)
-        profs[i]['iso_slope'] = (profs[i]['z']-profs[i]['zb_iso'])/(x[i]-x[i-1])/1000.
+        profs[i]['za_iso'] = S[i+1]-np.interp(S_ie[i+1]-profs[i]['ziea_iso'], D_depth_ie, D_depth)
+        if len(profs[i]['za_iso']) < len(profs[i]['zb_iso']):
+            profs[i]['za_iso'] = np.concatenate((profs[i]['za_iso'], 
+                                           np.ones(len(profs[i]['zb_iso'])-len(profs[i]['za_iso']))*np.nan))
+        profs[i]['iso_slope_diff'] = (profs[i]['za_iso']-profs[i]['zb_iso'])/(x[i+1]-x[i-1])/1000.
     else:
         profs[i]['zb_iso'] = np.nan*np.ones_like(profs[i]['z'])
-        profs[i]['iso_slope'] = np.nan*np.ones_like(profs[i]['z'])
+        profs[i]['za_iso'] = np.nan*np.ones_like(profs[i]['z'])
+        profs[i]['iso_slope_diff'] = np.nan*np.ones_like(profs[i]['z'])
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
 #    profs[i]['tau'] = (profs[i]['age'][1:]-profs[i]['age'][:-1]) / (profs[i]['a0'][1:]+profs[i]['a0'][:-1]) *2
     if comp_isochrones:
@@ -1215,7 +1240,7 @@ for name in ic:
     if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
-            ax4.plot(profs[ii]['iso_slope'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
+            ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
         ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
         ax4.spines['top'].set_color('violet')
         ax4.spines['top'].set_position(('axes', 1.2))
