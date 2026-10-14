@@ -467,9 +467,12 @@ for k in range(len(accu_starts)):
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) \
                     / (1 - a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint)
                 traj['tau'] = np.append(traj['tau'], tau)
+                # FIXME: this is actually unprecise since we don't take tau at the middle
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
                 ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
+                if j == i+1:
+                    ziea_iso = S_ie[i+1]
                 traj['ziea_iso'] = np.append(traj['ziea_iso'], ziea_iso)
                 if j == len(x)-1:
                     traj['out'] = 'downstream'
