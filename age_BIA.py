@@ -24,6 +24,7 @@ Ceci est un script temporaire.
 # TODO: Why thinning does not always increase at unconformities?
 # TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
 # TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
+# TODO: Rename iso_slope in just slope
 
 import sys
 import numpy as np
@@ -220,6 +221,7 @@ for name in ic:
         ic[name]['cp_age'] = df['age'].to_numpy(dtype=float)
         ic[name]['cp_x'] = df['x_origin'].to_numpy(dtype=float)
         ic[name]['cp_tau'] = df['thinning'].to_numpy(dtype=float)
+        ic[name]['cp_slope'] = df['slope'].to_numpy(dtype=float)
 
 # -----------------------------------------------------------
 # Reading of comparison files for surface velocity and age
@@ -1249,6 +1251,8 @@ for name in ic:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
             ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
+        if ic[name]['comp'] != None:
+            ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
         ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
         ax4.spines['top'].set_color('violet')
         ax4.spines['top'].set_position(('axes', 1.2))
