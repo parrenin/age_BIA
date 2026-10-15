@@ -413,7 +413,7 @@ if Q[0]>0:
         traj['za_iso'] = np.nan*np.ones_like(traj['z'])
         traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
         traj['iso_slope_diff'] = np.nan*np.ones_like(traj['z'])
-        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'])[1:-1]/(x[2:]-x[:-2])/1000.
+        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
