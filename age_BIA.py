@@ -104,7 +104,7 @@ def fct_domega_dp(zeta, p):
     term1 = (1-zeta)/(p+1)**2
     term2 = -(1-zeta)**(p+2)/(p+1)**2
     if zeta < 1:
-        term3 = (p+2)*(1-zeta)**(p+1)*math.log(1-zeta)/(p+1)
+        term3 = (1-zeta)**(p+2)*math.log(1-zeta)/(p+1)
     else:
         term3 = 0.
     return term1 + term2 + term3
