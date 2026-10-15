@@ -93,11 +93,13 @@ globals().update(para)
 
 def derivative(arr, i):
     if i==0:
-        return (arr[1]-arr[0])/(x[1]-x[0])
+        return (arr[1]-arr[0])/(x[1]-x[0])/1000.
     elif i==len(arr)-1:
-        return (arr[-1]-arr[-2])/(x[-1]-x[-2])
+        return (arr[-1]-arr[-2])/(x[-1]-x[-2])/1000.
     elif i>0 and i<len(arr)-1:
-        return (arr[i+1]-arr[i-1])/(x[i+1]-x[i-1])
+        return (arr[i+1]-arr[i-1])/(x[i+1]-x[i-1])/1000.
+    else:
+        print('i index out of array length in derivative fct.')
 
 def fct_omega(zeta, p):
     return 1 - (p + 2) / (p + 1) * (1 - zeta) + 1 / (p + 1) * (1 - zeta) ** (p + 2)
@@ -394,9 +396,9 @@ if Q[0]>0:
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
+                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
-                traj['slope'] = np.append(traj['tau'], traj_term)
+                traj['slope'] = np.append(traj['slope'], traj_term)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
                 ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
@@ -461,13 +463,15 @@ for k in range(len(accu_starts)):
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tauint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
-        surf_slope = derivative(S, i) 
+        surf_slope = derivative(S_ie, i)
         slope = np.concatenate([np.ones(i)*np.nan, np.array([surf_slope])])
         zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]])])
         ziea_iso = np.ones(i)*np.nan
         traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
                 'x0': x[i], 'a0': a[i], 'i0': i, 'tauint': tauint, 'tau': tau,
                 'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso, 'slope': slope}
+        # if i==398:
+        #     print(traj['slope'][398])
         profs[i]['z_ie'] = np.append(profs[i]['z_ie'], traj['z_ie'][-1])
         profs[i]['steady_age'] = np.append(profs[i]['steady_age'], traj['steady_age'][-1])
         profs[i]['tau'] = np.append(profs[i]['tau'], traj['tau'][-1])
@@ -501,9 +505,9 @@ for k in range(len(accu_starts)):
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
+                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
-                traj['slope'] = np.append(traj['tau'], traj_term)
+                traj['slope'] = np.append(traj['slope'], traj_term)
                 # FIXME: this is actually unprecise since we don't take tau at the middle
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
@@ -1292,9 +1296,9 @@ for name in ic:
         for i in range(len(prof_domains)-1):
             ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]],
                      profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
-            # ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
-            #          profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
-            #          color='violet', linestyle='dotted')
+            ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
+                     profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
+                     color='violet', linestyle='dotted')
         if ic[name]['comp'] != None:
             ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
         ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
