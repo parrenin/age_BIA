@@ -391,15 +391,19 @@ if Q[0]>0:
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
-                alpha = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
+                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
                 #FIXME: define kappa and kappab and reuse for slope
                 tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
+                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2)
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]  #FIXME: divide by D
-                traj['slope'] = np.append(traj['slope'], traj_term)
+                melt_term = (m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
+                chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
+                geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
+                slope = traj_term+melt_term+chg_flow_term+geom_term
+                traj['slope'] = np.append(traj['slope'], slope)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
                 ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
@@ -501,14 +505,18 @@ for k in range(len(accu_starts)):
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
-                alpha = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
+                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
                 tau = Q[i]/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
-                traj['slope'] = np.append(traj['slope'], traj_term)
+                melt_term = (m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
+                chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
+                geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
+                slope = traj_term+melt_term+chg_flow_term+geom_term
+                traj['slope'] = np.append(traj['slope'], slope)
                 # FIXME: this is actually unprecise since we don't take tau at the middle
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
