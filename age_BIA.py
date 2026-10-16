@@ -380,7 +380,7 @@ if Q[0]>0:
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
                 zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
 #                zeta2 = (traj['z_ie'][-1]-B[j])/H_ie[j]
-                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1]) #FIXME: call ux and uxb
                 ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta(zeta, p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
@@ -392,12 +392,13 @@ if Q[0]>0:
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
                 alpha = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
+                #FIXME: define kappa and kappab and reuse for slope
                 tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
                     /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
-                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
+                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]  #FIXME: divide by D
                 traj['slope'] = np.append(traj['slope'], traj_term)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
@@ -506,7 +507,7 @@ for k in range(len(accu_starts)):
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
                     /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
-                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
+                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
                 traj['slope'] = np.append(traj['slope'], traj_term)
                 # FIXME: this is actually unprecise since we don't take tau at the middle
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
