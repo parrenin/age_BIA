@@ -396,7 +396,7 @@ if Q[0]>0:
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
+                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2)
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
                 traj['slope'] = np.append(traj['slope'], traj_term)
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
@@ -505,7 +505,7 @@ for k in range(len(accu_starts)):
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - alpha)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])*(1-alpha) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+                    /Q[j]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-alpha) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])  #FIXME: divide by D
                 traj['slope'] = np.append(traj['slope'], traj_term)
                 # FIXME: this is actually unprecise since we don't take tau at the middle
