@@ -26,6 +26,7 @@ Ceci est un script temporaire.
 # TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
 # TODO: Rename iso_slope_diff in just slope_diff
 # TODO: Implement varying x grid
+# TODO: Respect max_depth in ice core figure
 
 import sys
 import numpy as np
