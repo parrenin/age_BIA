@@ -24,7 +24,8 @@ Ceci est un script temporaire.
 # TODO: Why thinning does not always increase at unconformities?
 # TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
 # TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
-# TODO: Rename iso_slope in just slope
+# TODO: Rename iso_slope_diff in just slope_diff
+# TODO: Implement varying x grid
 
 import sys
 import numpy as np
@@ -399,7 +400,7 @@ if Q[0]>0:
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
                     /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2)
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]  #FIXME: divide by D
-                melt_term = (m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
+                melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
                 chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
                 geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
                 slope = traj_term+melt_term+chg_flow_term+geom_term
@@ -512,7 +513,7 @@ for k in range(len(accu_starts)):
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
                     /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
-                melt_term = (m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
+                melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
                 chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
                 geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
                 slope = traj_term+melt_term+chg_flow_term+geom_term
