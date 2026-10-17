@@ -364,11 +364,12 @@ if Q[0]>0:
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
         tauint = np.array([H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
+#        tauint = np.array([0.])
         tau = np.array([qq/Q[0]])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
                 'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([]),
-                'slope': np.array([np.nan])}
+                'slope': np.array([0.])}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
         profs[0]['x0'] = np.append(profs[0]['x0'], x[0])
@@ -492,11 +493,11 @@ for k in range(len(accu_starts)):
         profs[i]['i0'] = np.append(profs[i]['i0'], traj['i0'])
         profs[i]['zieb_iso'] = np.append(profs[i]['zieb_iso'], traj['zieb_iso'][-1])
         j = i+1
+        qq = Q[i]
         while j < len(x) :
             traj['x'] = np.append(traj['x'], x[j])
-            if Q[j] >= Q[i] and Qm[j] <= Q[i] and traj['out'] == None :
-                qq = Q[i]
-                omega = (Q[i]-Qm[j])/(Q[j]-Qm[j])
+            if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None :
+                omega = (qq-Qm[j])/(Q[j]-Qm[j])
                 zeta = fct_zeta(omega, p[j])
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
                 zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
@@ -507,12 +508,12 @@ for k in range(len(accu_starts)):
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
                 dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) *  \
-                    np.sqrt(dkappa_dOmega_Omega(j, Q[i], zeta) * dkappa_dOmega_Omega(j-1, Q[i], zetab))
+                    np.sqrt(dkappa_dOmega_Omega(j, qq, zeta) * dkappa_dOmega_Omega(j-1, qq, zetab))
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
                 i0 = traj['i0']
                 gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
-                tau = Q[i]/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
+                tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
@@ -548,7 +549,7 @@ for k in range(len(accu_starts)):
                     profs.append({'z_ie': traj['z_ie'][-1], 'steady_age': traj['steady_age'][-1], 'x0': traj['x0'], 'unconf': []})
                     print('problem in profs append')
                     print(traj['slope'][-1])
-            elif Q[j] < Q[i] or traj['out'] == 'surf':
+            elif Q[j] < qq or traj['out'] == 'surf':
                 if traj['out'] != 'surf':
                     profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], np.nan)
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
@@ -558,7 +559,7 @@ for k in range(len(accu_starts)):
                 traj['out'] = 'surf'
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
                 traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
-            elif Qm[j] > Q[i] or traj['out'] == 'bed':
+            elif Qm[j] > qq or traj['out'] == 'bed':
                 if traj['out'] != 'bed':
                     profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], np.nan)
                 traj['z_ie'] = np.append(traj['z_ie'], np.nan)
