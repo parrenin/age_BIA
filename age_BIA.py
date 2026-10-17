@@ -367,7 +367,8 @@ if Q[0]>0:
         tau = np.array([qq/Q[0]])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
-                'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([])}
+                'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([]),
+                'slope': np.array([np.nan])}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
         profs[0]['steady_age'] = np.append(profs[0]['steady_age'], age[0])
         profs[0]['x0'] = np.append(profs[0]['x0'], x[0])
@@ -402,8 +403,8 @@ if Q[0]>0:
                     * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2)
-                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]  #FIXME: divide by D
+                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+                traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
                 melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
                 chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
                 geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
