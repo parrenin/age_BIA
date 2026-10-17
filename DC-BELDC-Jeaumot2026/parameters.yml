@@ -1,6 +1,10 @@
-x_left: 0.
-x_right: 40.7
-x_step: 0.02
+x_grid: #depth grid for the age calculation
+    type: 'linear_step'
+    start: 0.
+    end: 40.7
+    nb_steps: 814
+    ratio: 0.2
+x_start: 1.1
 z_step: 50.
 Q_left: 0.
 Qm_left: 0.
@@ -13,7 +17,6 @@ obs_bedrock: 'real_thickness.txt'
 comp_isochrones: 'isochrones_age_flow_line.txt'
 comp_iso_ages: 'isochrones-ages.txt'
 solid_fraction: 'solid_fraction.txt'
-x_start: 1.1
 output_fl: True
 comp_surf_vel: 'surf_velocity_age_flow_line.txt'
 fig_ic_slope: True

@@ -25,7 +25,7 @@ Ceci est un script temporaire.
 # TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
 # TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
 # TODO: Rename iso_slope_diff in just slope_diff
-# TODO: Implement varying x grid
+# TODO: Implement varying z grid as well
 # TODO: Respect max_depth in ice core figure
 
 import sys
@@ -43,6 +43,7 @@ import resource
 import warnings
 import pandas as pd
 import math
+from abia_math import grid
 
 # Registration of start time
 START_TIME = time.perf_counter()
@@ -83,6 +84,7 @@ x_start = None
 solid_fraction = None
 output_fl = False
 fig_ic_slope = False
+x_grid = {}
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -257,7 +259,8 @@ if comp_surf_age != None:
 # Interpolation and fluxes
 # --------------------------
 
-x = np.arange(x_left, x_right+x_step, x_step)
+#x = np.arange(x_left, x_right+x_step, x_step)
+x = grid(x_grid)
 
 a = np.interp(x, x_a, a_measure)
 m = np.interp(x, x_m, m_measure)

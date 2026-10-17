@@ -1,6 +1,8 @@
-x_left: 0.
-x_right: 100.
-x_step: 0.2
+x_grid: #depth grid for the age calculation
+    type: 'regular'
+    start: 0.
+    end: 100.
+    nb_steps: 500.
 z_step: 16
 Q_left: 1000.
 Qm_left: 10.
