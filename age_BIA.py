@@ -386,8 +386,8 @@ if Q[0]>0:
                 zeta = fct_zeta(omega, p[j])
                 traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
                 zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
-#                zeta2 = (traj['z_ie'][-1]-B[j])/H_ie[j]
-                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1]) #FIXME: call ux and uxb
+                #FIXME: call ux and uxb
+                ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
                 ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta(zeta, p[j])
                 # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
                 ux = np.sqrt(ux1*ux2)
@@ -423,7 +423,7 @@ if Q[0]>0:
                 profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
                 profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
                 profs[j]['tau'] = np.append(profs[j]['tau'], traj['tau'][-1])
-                profs[j]['slope'] = np.append(profs[j]['tau'], traj['slope'][-1])
+                profs[j]['slope'] = np.append(profs[j]['slope'], traj['slope'][-1])
                 profs[j]['zieb_iso'] = np.append(profs[j]['zieb_iso'], traj['zieb_iso'][-1])
                 profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], traj['ziea_iso'][-1])
             elif Q[j] < qq or traj['out'] == 'surf':
@@ -507,7 +507,7 @@ for k in range(len(accu_starts)):
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) *  \
+                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * \
                     np.sqrt(dkappa_dOmega_Omega(j, qq, zeta) * dkappa_dOmega_Omega(j-1, qq, zetab))
                 tauint = traj['tauint'][-1]+dtauint
                 traj['tauint'] = np.append(traj['tauint'], tauint)
@@ -524,7 +524,6 @@ for k in range(len(accu_starts)):
                 geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
                 slope = traj_term+melt_term+chg_flow_term+geom_term
                 traj['slope'] = np.append(traj['slope'], slope)
-                # FIXME: this is actually unprecise since we don't take tau at the middle
                 zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
                 traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
                 ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
