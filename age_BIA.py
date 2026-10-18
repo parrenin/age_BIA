@@ -19,7 +19,6 @@ Ceci est un script temporaire.
 # TODO: Can we take ux with an average zeta and an average p? Instead of the geometric mean of ux1 and ux2. This would prevent a singularity at bedrock.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
-# TODO: Rename tauint in kappaint?
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
 # TODO: Why thinning does not always increase at unconformities?
 # TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
@@ -147,7 +146,7 @@ def integrate_age(zeta_min, zeta_max, p, H, a, mu):
     )
     return result
 
-def dkappa_dOmega_Omega(j, qq, zeta):
+def fct_gamma_int(j, qq, zeta):
     return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, p[j])**3 \
         *fct_d2omega_dzeta2(zeta, p[j])
     
@@ -363,11 +362,11 @@ if Q[0]>0:
         zeta = (zz-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        tauint = np.array([H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(1, p[0]) -1/fct_domega_dzeta(zeta, p[0]))])
-#        tauint = np.array([0.])
+        gammaint = np.array([ H_ie[0]/a[0]*Q[0]/QH[0]* (1/fct_domega_dzeta(zeta, p[0]) - 1/fct_domega_dzeta(1, p[0])) ])
+#        gammaint = np.array([0.])
         tau = np.array([qq/Q[0]])
         traj = {'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
-                'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'tauint': tauint,
+                'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'gammaint': gammaint,
                 'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([]),
                 'slope': np.array([0.])}
         profs[0]['z_ie'] = np.append(profs[0]['z_ie'], z)
@@ -393,18 +392,18 @@ if Q[0]>0:
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * \
-                    np.sqrt(dkappa_dOmega_Omega(j, qq, zeta) * dkappa_dOmega_Omega(j-1, qq, zetab))
-                tauint = traj['tauint'][-1]+dtauint
-                traj['tauint'] = np.append(traj['tauint'], tauint)
+                dgammaint = 1000 * (traj['x'][-1]-traj['x'][-2]) * \
+                    np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
+                gammaint = traj['gammaint'][-1]+dgammaint
+                traj['gammaint'] = np.append(traj['gammaint'], gammaint)
                 i0 = traj['i0']
-                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
+                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*gammaint
                 #FIXME: define kappa and kappab and reuse for slope
                 tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
                 melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
                 chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
@@ -473,14 +472,14 @@ for k in range(len(accu_starts)):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]])])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
-        tauint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
+        gammaint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
         surf_slope = derivative(S_ie, i)
         slope = np.concatenate([np.ones(i)*np.nan, np.array([surf_slope])])
         zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]])])
         ziea_iso = np.ones(i)*np.nan
         traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
-                'x0': x[i], 'a0': a[i], 'i0': i, 'tauint': tauint, 'tau': tau,
+                'x0': x[i], 'a0': a[i], 'i0': i, 'gammaint': gammaint, 'tau': tau,
                 'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso, 'slope': slope}
         # if i==398:
         #     print(traj['slope'][398])
@@ -507,17 +506,17 @@ for k in range(len(accu_starts)):
                 ux = np.sqrt(ux1*ux2)
                 dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
                 traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-                dtauint = - 1000 * (traj['x'][-1]-traj['x'][-2]) * \
-                    np.sqrt(dkappa_dOmega_Omega(j, qq, zeta) * dkappa_dOmega_Omega(j-1, qq, zetab))
-                tauint = traj['tauint'][-1]+dtauint
-                traj['tauint'] = np.append(traj['tauint'], tauint)
+                dgammaint = 1000 * (traj['x'][-1]-traj['x'][-2]) * \
+                    np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
+                gammaint = traj['gammaint'][-1]+dgammaint
+                traj['gammaint'] = np.append(traj['gammaint'], gammaint)
                 i0 = traj['i0']
-                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*tauint
+                gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*gammaint
                 tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
-                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1 - gamma)
+                    * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
                 traj['tau'] = np.append(traj['tau'], tau)
                 traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1-gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+                    /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
                 traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
                 melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
                 chg_flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
