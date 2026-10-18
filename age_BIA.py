@@ -1300,7 +1300,7 @@ for name in ic:
         #       (-profs[ii]['steady_age'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['steady_age'][prof_domains[i]:prof_domains[i+1]-1]) / \
         #       (profs[ii]['a0'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['a0'][prof_domains[i]:prof_domains[i+1]-1]) *2
         # zz = (profs[ii]['z'][prof_domains[i]+1:prof_domains[i+1]]+profs[ii]['z'][prof_domains[i]:prof_domains[i+1]-1] ) /2
-        # ax3.plot(tau, zz, color='orange', linestyle='--')
+        # ax3.plot(tau, zz, color='orange', linestyle='dotted')
         ax3.plot(profs[ii]['tau'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='orange')
     if ic[name]['comp'] != None:
         ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
@@ -1313,11 +1313,11 @@ for name in ic:
     if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
-            ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]],
-                     profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet')
+            # ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]],
+            #          profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet', linestyle='dotted')
             ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
                      profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
-                     color='violet', linestyle='dotted')
+                     color='violet')
         if ic[name]['comp'] != None:
             ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
         ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
