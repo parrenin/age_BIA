@@ -84,6 +84,7 @@ solid_fraction = None
 output_fl = False
 fig_ic_slope = False
 x_grid = {}
+fig_slope_maxrange = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -474,8 +475,8 @@ for k in range(len(accu_starts)):
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         gammaint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
-        surf_slope = derivative(S_ie, i)
-        slope = np.concatenate([np.ones(i)*np.nan, np.array([surf_slope])])
+        sie_slope = derivative(S_ie, i)
+        slope = np.concatenate([np.ones(i)*np.nan, np.array([sie_slope])])
         zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]])])
         ziea_iso = np.ones(i)*np.nan
         traj = {'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
@@ -608,24 +609,30 @@ print('Before creating figures:',
 
 surf_steady_age = np.zeros_like(x)
 surf_tau = np.zeros_like(x)
+surf_slope = np.zeros_like(x)
 for i in range(len(x)):
     try: #FIXME: can we avoid this try by being smarter?
         surf_steady_age[i] = interp1d(profs[i]['z'], profs[i]['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
         surf_tau[i] = interp1d(profs[i]['z'], profs[i]['tau'], kind='linear', fill_value="extrapolate")(S[i])
+        surf_slope[i] = interp1d(profs[i]['z'], profs[i]['slope'], kind='linear', fill_value="extrapolate")(S[i])
     except:
         surf_steady_age[i] = np.nan
         surf_tau[i] = np.nan
+        surf_slope[i] = np.nan
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)        
 
 # ----------------------------------------
 # Preparing for figures
 # ----------------------------------------
+# FIXME: can we make a function here instead of repeating for every variable?
+
 
 # Concatenation in lists for trajectories plots
 x_list = []
 z_list = []
 age_list = []
 tau_list = []
+slope_list = []
 in_list = []
 for i in range(0, len(trajs), step_traj):
     traj = trajs[i]
@@ -633,6 +640,7 @@ for i in range(0, len(trajs), step_traj):
     z_list.append(traj['z'])
     age_list.append(traj['age'])
     tau_list.append(traj['tau'])
+    slope_list.append(traj['slope'])
     in_list.append(traj['in'])
 
 # Creation of domains and unformities
@@ -641,6 +649,7 @@ mat_x = np.array([trajs[0]['x']])
 mat_z = np.array([trajs[0]['z']])
 mat_age = np.array([trajs[0]['age']])
 mat_tau = np.array([trajs[0]['tau']])
+mat_slope = np.array([trajs[0]['slope']])
 if len(index_unconf) ==0:
     end = len(trajs)
 else:
@@ -651,7 +660,9 @@ for i in range(1, end):
     mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
     mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
     mat_tau = np.concatenate([mat_tau, np.array([trajs[i]['tau']])])
-domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age, 'mat_tau': mat_tau}]
+    mat_slope = np.concatenate([mat_slope, np.array([trajs[i]['slope']])])
+domains_list = [{'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age,
+                 'mat_tau': mat_tau, 'mat_slope': mat_slope}]
 unconf_list = []
 
 
@@ -662,6 +673,7 @@ for k in range(len(index_unconf)):
     mat_z = np.array([trajs[index_unconf[k]]['z']])
     mat_age = np.array([trajs[index_unconf[k]]['age']])
     mat_tau = np.array([trajs[index_unconf[k]]['tau']])
+    mat_slope = np.array([trajs[index_unconf[k]]['slope']])
     if k == len(index_unconf)-1:
         end = len(trajs)
     else:
@@ -672,7 +684,8 @@ for k in range(len(index_unconf)):
         mat_z = np.concatenate([mat_z, np.array([trajs[i]['z']])])
         mat_age = np.concatenate([mat_age, np.array([trajs[i]['age']])])
         mat_tau = np.concatenate([mat_tau, np.array([trajs[i]['tau']])])
-    domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age, 'mat_tau': mat_tau})
+        mat_slope = np.concatenate([mat_slope, np.array([trajs[i]['slope']])])
+    domains_list.append({'mat_x': mat_x, 'mat_z': mat_z, 'mat_age': mat_age, 'mat_tau': mat_tau, 'mat_slope': mat_slope})
 
 
 # Quantities for ice cores
@@ -1231,7 +1244,7 @@ sm = plt.cm.ScalarMappable(cmap='plasma', norm=norm)
 sm.set_array([])
 cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
 cb.set_label(label='vertical thinning ratio (no unit)', size=18)
-cb.add_lines(cp)
+#cb.add_lines(cp)
 
 
 for name in ic:
@@ -1246,6 +1259,159 @@ plt.close()
 
 
 print('After thinning figures:',
+      round(time.perf_counter()-START_TIME, 4), 's.')        
+
+
+
+
+# -----------------
+# slope figure
+# -----------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_slope, color='r', linewidth=2)
+ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
+ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if bottom > 0.9 and top < 1.1:
+    bottom = 0.9
+    top = 1.1
+ax1b.set_ylim(bottom, top)
+
+if fig_slope_maxrange == None:
+    slope_min = min(np.nanmin(slope) for slope in slope_list)
+    slope_max = max(np.nanmax(slope) for slope in slope_list)
+    slope_max = max(-slope_min, slope_max)
+else:
+    slope_max = fig_slope_maxrange
+norm = Normalize(vmin=-slope_max, vmax=slope_max)
+
+ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
+
+#levels = np.arange(tau_min, tau_max, 0.1)
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_slope'], levels=100,
+                 cmap='PuOr', norm=norm)
+    # cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_slope'], levels=levels,
+    #                  colors='k', norm=norm)
+
+for unconf in unconf_list:
+    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
+
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('elevation (m)', fontsize=19)
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm)
+sm.set_array([])
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='layer slope (no unit)', size=18)
+#cb.add_lines(cp)
+
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], ic[name]['S']), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'slope_x_z.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+# ----------------------------
+# slope figure vs depth
+# ----------------------------
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
+                               figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+
+ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
+ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+
+ax1b = ax1.twinx()
+ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
+ax1b.tick_params(axis='y', colors='r')
+bottom, top = ax1b.get_ylim()
+if bottom > 0.9:
+    bottom = 0.9
+    top = 1.1
+ax1b.set_ylim(bottom, top)
+
+if fig_slope_maxrange == None:
+    slope_min = min(np.nanmin(slope) for slope in slope_list)
+    slope_max = max(np.nanmax(slope) for slope in slope_list)
+    slope_max = max(-slope_min, slope_max)
+else:
+    slope_max = fig_slope_maxrange
+norm = Normalize(vmin=-slope_max, vmax=slope_max)
+
+ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+if obs_bedrock is not None:
+    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+else:
+    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+
+ax2top = ax2.twiny()
+ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
+ax2top.xaxis.set_ticks([])
+
+#levels = np.arange(tau_min, tau_max, 0.1)
+for dom in domains_list:
+    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_slope'], levels=100,
+                 cmap='PuOr', norm=norm)
+    # ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_slope'], levels=levels,
+    #              colors='k', norm=norm)
+
+for unconf in unconf_list:
+    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
+             linestyle='--')
+
+ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+ax2.set_ylabel('depth (m)', fontsize=19)
+ax2.set_ylim(ax2.get_ylim()[::-1])
+
+# Add colorbar
+sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm)
+sm.set_array([])
+cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb.set_label(label='layer slope (no unit)', size=18)
+cb.add_lines(cp)
+
+
+for name in ic:
+    ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
+             color=color_core, linestyle=ls_core)
+    ax2.annotate(name, (ic[name]['x'], 0.), ha='center',
+                 va='bottom', color=color_core)
+
+plt.savefig(datadir+'slope_x_depth.'+fig_format,
+                format=fig_format, bbox_inches='tight')
+plt.close()
+
+
+print('After slope figures:',
       round(time.perf_counter()-START_TIME, 4), 's.')        
 
 
