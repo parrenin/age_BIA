@@ -10,7 +10,6 @@ Ceci est un script temporaire.
 # TDO: use panda for inputs
 # TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
-# TODO: ice core output: give thinning, but this not on the same grid!
 # TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
 # TODO: Output for isochrones
@@ -20,12 +19,9 @@ Ceci est un script temporaire.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
-# TODO: Why thinning does not always increase at unconformities?
-# TODO: If Q[0]==0, still calculate profs[0]['tau'] and profs[0]['age']
 # TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
 # TODO: Rename iso_slope_diff in just slope_diff
 # TODO: Implement varying z grid as well
-# TODO: Respect max_depth in ice core figure
 
 import sys
 import numpy as np
@@ -453,8 +449,8 @@ if Q[0]>0:
         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
         traj['za_iso'] = np.nan*np.ones_like(traj['z'])
         traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
-        traj['iso_slope_diff'] = np.nan*np.ones_like(traj['z'])
-        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
+        traj['slope_diff'] = np.nan*np.ones_like(traj['z'])
+        traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
@@ -575,8 +571,8 @@ for k in range(len(accu_starts)):
         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
         traj['za_iso'] = np.nan*np.ones_like(traj['z'])
         traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
-        traj['iso_slope_diff'] = np.nan*np.ones_like(traj['z'])
-        traj['iso_slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
+        traj['slope_diff'] = np.nan*np.ones_like(traj['z'])
+        traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
         traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
         trajs.append(traj)
 
@@ -585,11 +581,11 @@ for i in range(len(x)-1): #FIXME: why -1?
     if i>=1:
         profs[i]['zb_iso'] = S[i-1]-np.interp(S_ie[i-1]-profs[i]['zieb_iso'], D_depth_ie, D_depth)
         profs[i]['za_iso'] = S[i+1]-np.interp(S_ie[i+1]-profs[i]['ziea_iso'], D_depth_ie, D_depth)
-        profs[i]['iso_slope_diff'] = (profs[i]['za_iso']-profs[i]['zb_iso'])/(x[i+1]-x[i-1])/1000.
+        profs[i]['slope_diff'] = (profs[i]['za_iso']-profs[i]['zb_iso'])/(x[i+1]-x[i-1])/1000.
     else:
         profs[i]['zb_iso'] = np.nan*np.ones_like(profs[i]['z'])
         profs[i]['za_iso'] = np.nan*np.ones_like(profs[i]['z'])
-        profs[i]['iso_slope_diff'] = np.nan*np.ones_like(profs[i]['z'])
+        profs[i]['slope_diff'] = np.nan*np.ones_like(profs[i]['z'])
     profs[i]['age'] = np.interp(profs[i]['steady_age'], steady_age_R, age_R)
 #    profs[i]['tau'] = (profs[i]['age'][1:]-profs[i]['age'][:-1]) / (profs[i]['a0'][1:]+profs[i]['a0'][:-1]) *2
     if comp_isochrones:
@@ -1479,7 +1475,7 @@ for name in ic:
     if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
-            # ax4.plot(profs[ii]['iso_slope_diff'][prof_domains[i]: prof_domains[i+1]],
+            # ax4.plot(profs[ii]['slope_diff'][prof_domains[i]: prof_domains[i+1]],
             #          profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet', linestyle='dotted')
             ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
                      profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
