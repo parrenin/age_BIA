@@ -1257,11 +1257,13 @@ print('After thinning figures:',
 
 for name in ic:
     ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
+
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title(name + ' ice core', fontsize=20)
     prof_domains = profs[ii]['unconf'].copy()
     prof_domains.insert(0, 0)
     prof_domains.append(len(profs[ii]['z']))
+
     for i in range(len(prof_domains)-1):
         ax.plot(profs[ii]['age'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='b')
     if ic[name]['comp'] != None:
@@ -1280,6 +1282,7 @@ for name in ic:
     axb = ax.twinx()
     axb.set_ylim(top=0., bottom=S[ii]-B[ii])
     axb.set_ylabel('depth (m)', fontsize=15)
+    
     ax2 = ax.twiny()
     for i in range(len(prof_domains)-1):
         ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
@@ -1291,6 +1294,7 @@ for name in ic:
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
     ax2.spines['bottom'].set_visible(False)
+
     ax3=ax.twiny()
     for i in range(len(prof_domains)-1):
         # tau = (profs[ii]['z_ie'][prof_domains[i]+1:prof_domains[i+1]]-profs[ii]['z_ie'][prof_domains[i]:prof_domains[i+1]-1]) / \
@@ -1306,6 +1310,7 @@ for name in ic:
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
     ax3.set_xlim(left=0)
+
     if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
@@ -1320,6 +1325,7 @@ for name in ic:
         ax4.spines['top'].set_color('violet')
         ax4.spines['top'].set_position(('axes', 1.2))
         ax4.tick_params(axis='x', colors='violet')
+
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')
     plt.close()
