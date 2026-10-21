@@ -433,11 +433,12 @@ for traj in trajs:
             #FIXME: re-use kappa?
             traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']\
                 *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) - a[j]/Q[j]) #FIXME: factorize Y and 1/Q
-            traj_term *= Y[j]*H_ie[j]/fct_domega_dzeta(zeta, p[j])*qq/QH[j]   #FIXME: divide by D
-            melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
+            slope =traj_term* Y[j]*qq   #FIXME: divide by D
+            melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j]) #FIXME: Divide by D
+            slope = (slope + melt_term) * H_ie[j] / QH[j] / fct_domega_dzeta(zeta, p[j])
             flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
             geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
-            slope = traj_term+melt_term+flow_term+geom_term
+            slope += flow_term+geom_term
             traj['slope'] = np.append(traj['slope'], slope)
             zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
             traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
