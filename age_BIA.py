@@ -1188,11 +1188,6 @@ ax1b = ax1.twinx()
 ax1b.plot(x/1000., surf_slope, color='r', linewidth=2)
 ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
-bottom, top = ax1b.get_ylim()
-if bottom > 0.9 and top < 1.1:
-    bottom = 0.9
-    top = 1.1
-ax1b.set_ylim(bottom, top)
 
 if fig_slope_maxrange == None:
     slope_min = min(np.nanmin(slope) for slope in slope_list)
@@ -1258,14 +1253,9 @@ ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
 ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x/1000., surf_tau, color='r', linewidth=2)
+ax1b.plot(x/1000., surf_slope, color='r', linewidth=2)
 ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
-bottom, top = ax1b.get_ylim()
-if bottom > 0.9:
-    bottom = 0.9
-    top = 1.1
-ax1b.set_ylim(bottom, top)
 
 if fig_slope_maxrange == None:
     slope_min = min(np.nanmin(slope) for slope in slope_list)
