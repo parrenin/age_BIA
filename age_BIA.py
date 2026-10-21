@@ -18,7 +18,6 @@ Ceci est un script temporaire.
 # TODO: Can we take ux with an average zeta and an average p? Instead of the geometric mean of ux1 and ux2. This would prevent a singularity at bedrock.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
-# TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
 # TODO: Implement varying z grid as well
 
 import sys
@@ -91,11 +90,11 @@ globals().update(para)
 
 def derivative(arr, i):
     if i==0:
-        return (arr[1]-arr[0])/(x[1]-x[0])/1000.
+        return (arr[1]-arr[0])/(x[1]-x[0])
     elif i==len(arr)-1:
-        return (arr[-1]-arr[-2])/(x[-1]-x[-2])/1000.
+        return (arr[-1]-arr[-2])/(x[-1]-x[-2])
     elif i>0 and i<len(arr)-1:
-        return (arr[i+1]-arr[i-1])/(x[i+1]-x[i-1])/1000.
+        return (arr[i+1]-arr[i-1])/(x[i+1]-x[i-1])
     else:
         print('i index out of array length in derivative fct.')
 
@@ -270,9 +269,10 @@ if obs_bedrock != None:
     obs_bed_depth = np.interp(x, obs_bed_x, obs_bed_depth)
     obs_bed_z = S - obs_bed_depth
 
+x *= 1000
 
 # Computation of total flux Q
-dQdx = (x[1:]-x[:-1]) * 1000 * \
+dQdx = (x[1:]-x[:-1]) * \
     (a[:-1] * Y[:-1] +
      0.5 * ((a[1:]-a[:-1]) * Y[:-1] + (Y[1:]-Y[:-1])
             * a[:-1]) +
@@ -288,7 +288,7 @@ elif Q[0] < 0:
     sys.exit()
 
 # Computation of basal melting flux Qm
-dQmdx = (x[1:]-x[:-1]) * 1000 * \
+dQmdx = (x[1:]-x[:-1]) * \
     (m[:-1] * Y[:-1] +
      0.5 * ((m[1:]-m[:-1]) * Y[:-1] + (Y[1:]-Y[:-1])
             * m[:-1]) +
@@ -418,9 +418,9 @@ for traj in trajs:
             zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
             kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, p[j-1])
             kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])
-            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) * (kappa+kappab)/2
+            dage = (traj['x'][-1]-traj['x'][-2]) * (kappa+kappab)/2
             traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-            dgammaint = 1000 * (traj['x'][-1]-traj['x'][-2]) * \
+            dgammaint = (traj['x'][-1]-traj['x'][-2]) * \
                 np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
             gammaint = traj['gammaint'][-1]+dgammaint
             traj['gammaint'] = np.append(traj['gammaint'], gammaint)
@@ -485,7 +485,7 @@ for traj in trajs:
     traj['za_iso'] = np.nan*np.ones_like(traj['z'])
     traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
     traj['slope_diff'] = np.nan*np.ones_like(traj['z'])
-    traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])/1000.
+    traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])
     traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
 
 
@@ -494,7 +494,7 @@ for i in range(len(x)-1): #FIXME: why -1?
     if i>=1:
         profs[i]['zb_iso'] = S[i-1]-np.interp(S_ie[i-1]-profs[i]['zieb_iso'], D_depth_ie, D_depth)
         profs[i]['za_iso'] = S[i+1]-np.interp(S_ie[i+1]-profs[i]['ziea_iso'], D_depth_ie, D_depth)
-        profs[i]['slope_diff'] = (profs[i]['za_iso']-profs[i]['zb_iso'])/(x[i+1]-x[i-1])/1000.
+        profs[i]['slope_diff'] = (profs[i]['za_iso']-profs[i]['zb_iso'])/(x[i+1]-x[i-1])
     else:
         profs[i]['zb_iso'] = np.nan*np.ones_like(profs[i]['z'])
         profs[i]['za_iso'] = np.nan*np.ones_like(profs[i]['z'])
@@ -506,7 +506,7 @@ for i in range(len(x)-1): #FIXME: why -1?
         profs[i]['cp_iso_z'] = np.zeros(cp_iso_nb)
         for j in range(cp_iso_nb):
             profs[i]['cp_iso_depth'][j] = np.interp(x[i], cp_iso_x, cp_iso_depth[j,:])
-            profs[i]['cp_iso_z'][j] = np.interp(x[i], cp_iso_x, cp_iso_z[j, :])
+            profs[i]['cp_iso_z'][j] = np.interp(x[i]/1000., cp_iso_x, cp_iso_z[j, :])
 
     
 # ----------------------------------------
@@ -612,23 +612,23 @@ for name in ic:
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.plot(x/1000., surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')  
 ax1b.tick_params(axis='y', colors='r')
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -636,13 +636,13 @@ ax2top.xaxis.set_ticks([])
 
 for xx, zz, iin in zip(x_list, z_list, in_list):
     if iin == 'upstream': 
-        ax2.plot(xx, zz, color='k')
+        ax2.plot(xx/1000., zz, color='k')
     elif iin == 'surf':
-        ax2.plot(xx, zz, color='b')
+        ax2.plot(xx/1000., zz, color='b')
 
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
-    ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+    ax2.plot(traj['x']/1000., traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('elevation (m)', fontsize=19)
@@ -666,23 +666,23 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.plot(x/1000., surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
 ax1b.tick_params(axis='y', colors='r')
 
-ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -690,13 +690,13 @@ ax2top.xaxis.set_ticks([])
 
 for xx, zz, iin in zip(x_list, z_list, in_list):
     if iin == 'upstream': 
-        ax2.plot(xx, S-zz, color='k')
+        ax2.plot(xx/1000., S-zz, color='k')
     elif iin == 'surf':
-        ax2.plot(xx, S-zz, color='b')
+        ax2.plot(xx/1000., S-zz, color='b')
 
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
-    ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+    ax2.plot(traj['x']/1000., S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('depth (m)', fontsize=19)
@@ -723,12 +723,12 @@ print('After simple trajectories figures:',
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.plot(x/1000., surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
@@ -740,12 +740,12 @@ age_max = max(np.nanmax(age/1000.) for age in age_list)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -753,7 +753,7 @@ ax2top.xaxis.set_ticks([])
 
 for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
-    points = np.array([xx, zz]).T.reshape(-1, 1, 2)
+    points = np.array([xx/1000., zz]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
     # Créer une LineCollection pour cette ligne
@@ -764,7 +764,7 @@ for xx, zz, aa in zip(x_list, z_list, age_list):
 
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
-    ax2.plot(traj['x'], traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+    ax2.plot(traj['x']/1000., traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('elevation (m)', fontsize=19)
@@ -794,12 +794,12 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_vel*R[0], color='r', linewidth=2)
+ax1b.plot(x/1000., surf_vel*R[0], color='r', linewidth=2)
 ax1b.set_ylabel('PD surf. vel. (m/yr)', color='r', fontsize=14)
 if comp_surf_vel != None:
     ax1b.plot(cp_surf_vel_x, cp_surf_vel_vel, color='r', linewidth=2, linestyle='--')
@@ -811,12 +811,12 @@ age_max = max(np.nanmax(age/1000.) for age in age_list)
 linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient linéaire (évite log(0))
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 
-ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -824,7 +824,7 @@ ax2top.xaxis.set_ticks([])
 
 for xx, zz, aa in zip(x_list, z_list, age_list):
     # Créer des segments entre les points consécutifs
-    points = np.array([xx, S-zz]).T.reshape(-1, 1, 2)
+    points = np.array([xx/1000., S-zz]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
 
     # Créer une LineCollection pour cette ligne
@@ -835,7 +835,7 @@ for xx, zz, aa in zip(x_list, z_list, age_list):
 
 for k in range(len(index_unconf)):
     traj = trajs[index_unconf[k]]
-    ax2.plot(traj['x'], S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
+    ax2.plot(traj['x']/1000., S-traj['z'], label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('depth (m)', fontsize=19)
@@ -870,12 +870,12 @@ print('After color trajectories figures:',
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.plot(x/1000., surf_age/1000., color='r', linewidth=2)
 if comp_surf_age != None:
     ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
@@ -891,12 +891,12 @@ linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient li
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -910,13 +910,13 @@ if comp_isochrones is not None:
 normalized_levels = np.linspace(0, 1, 100)
 levels = norm.inverse(normalized_levels)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels,
+    ax2.contourf(dom['mat_x']/1000., dom['mat_z'], dom['mat_age']/1000., levels=levels,
                  cmap='plasma_r', norm=norm)
-    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
+    cp = ax2.contour(dom['mat_x']/1000., dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 
@@ -951,12 +951,12 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_age/1000., color='r', linewidth=2)
+ax1b.plot(x/1000., surf_age/1000., color='r', linewidth=2)
 if comp_surf_age != None:
     ax1b.plot(cp_surf_age_x, cp_surf_age_age/1000., color='r', linestyle='None', marker='o')
 ax1b.set_ylabel('surface age (kyr)', color='r', fontsize=14)
@@ -972,12 +972,12 @@ linthresh = age_max/scaling_age  # Seuil en dessous duquel l'échelle devient li
 norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=age_min, vmax=age_max)
 levels_iso = np.array(fig_age_iso)
 
-ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -991,9 +991,9 @@ if comp_isochrones is not None:
 normalized_levels = np.linspace(0, 1, 100)
 levels = norm.inverse(normalized_levels)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=levels,
+    ax2.contourf(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_age']/1000., levels=levels,
                  cmap='plasma_r', norm=norm)
-    cp = ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
+    cp = ax2.contour(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_age']/1000., levels=levels_iso, colors='k',
                      norm=norm)
 
 for unconf in unconf_list:
@@ -1035,12 +1035,12 @@ print('After age figures:',
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.plot(x/1000., surf_tau, color='r', linewidth=2)
 ax1b.set_ylabel('surface thinning', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -1053,12 +1053,12 @@ tau_min = 0.
 tau_max = max(np.nanmax(tau) for tau in tau_list)
 norm = Normalize(vmin=tau_min, vmax=tau_max)
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -1066,13 +1066,13 @@ ax2top.xaxis.set_ticks([])
 
 levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=100,
+    ax2.contourf(dom['mat_x']/1000., dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
-    cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_tau'], levels=levels,
+    cp = ax2.contour(dom['mat_x']/1000., dom['mat_z'], dom['mat_tau'], levels=levels,
                      colors='k', norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -1104,12 +1104,12 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.plot(x/1000., surf_tau, color='r', linewidth=2)
 ax1b.set_ylabel('surface thinning', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -1122,12 +1122,12 @@ tau_min = 0.
 tau_max = max(np.nanmax(tau) for tau in tau_list)
 norm = Normalize(vmin=tau_min, vmax=tau_max)
 
-ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -1135,13 +1135,13 @@ ax2top.xaxis.set_ticks([])
 
 levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=100,
+    ax2.contourf(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_tau'], levels=100,
                  cmap='plasma', norm=norm)
-    ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_tau'], levels=levels,
+    ax2.contour(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_tau'], levels=levels,
                  colors='k', norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., S-unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -1180,12 +1180,12 @@ print('After thinning figures:',
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_slope, color='r', linewidth=2)
+ax1b.plot(x/1000., surf_slope, color='r', linewidth=2)
 ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -1202,12 +1202,12 @@ else:
     slope_max = fig_slope_maxrange
 norm = Normalize(vmin=-slope_max, vmax=slope_max)
 
-ax2.plot(x, S, label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_z, B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_z, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_z, B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_z, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -1215,13 +1215,13 @@ ax2top.xaxis.set_ticks([])
 
 #levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], dom['mat_z'], dom['mat_slope'], levels=100,
+    ax2.contourf(dom['mat_x']/1000., dom['mat_z'], dom['mat_slope'], levels=100,
                  cmap='PuOr', norm=norm)
     # cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_slope'], levels=levels,
     #                  colors='k', norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -1253,12 +1253,12 @@ plt.close()
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True, 
                                figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
 
-ax1.plot(x, a*R[0], color='k', linewidth=2)
+ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
 ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
-ax1.plot(x, np.zeros_like(x), color='k', linewidth=2, linestyle='--')
+ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
 
 ax1b = ax1.twinx()
-ax1b.plot(x, surf_tau, color='r', linewidth=2)
+ax1b.plot(x/1000., surf_tau, color='r', linewidth=2)
 ax1b.set_ylabel('surf. layer slope', color='r', fontsize=14)
 ax1b.tick_params(axis='y', colors='r')
 bottom, top = ax1b.get_ylim()
@@ -1275,12 +1275,12 @@ else:
     slope_max = fig_slope_maxrange
 norm = Normalize(vmin=-slope_max, vmax=slope_max)
 
-ax2.plot(x, np.zeros_like(S), label='Surface', color='k', linewidth=2.)
+ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
-    ax2.fill_between(x, obs_bed_depth, S-B, color='grey', label='Stagnant ice')
-    ax2.plot(x, obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
+    ax2.fill_between(x/1000., obs_bed_depth, S-B, color='grey', label='Stagnant ice')
+    ax2.plot(x/1000., obs_bed_depth, label='Bedrock', color='k', linewidth=2.)
 else:
-    ax2.plot(x, S-B, label='Bedrock', color='k', linewidth=2.)
+    ax2.plot(x/1000., S-B, label='Bedrock', color='k', linewidth=2.)
 
 ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
@@ -1288,13 +1288,13 @@ ax2top.xaxis.set_ticks([])
 
 #levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x'], S-dom['mat_z'], dom['mat_slope'], levels=100,
+    ax2.contourf(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_slope'], levels=100,
                  cmap='PuOr', norm=norm)
     # ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_slope'], levels=levels,
     #              colors='k', norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., S-unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -1330,7 +1330,7 @@ print('After slope figures:',
 # ----------------------------
 
 for name in ic:
-    ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
+    ii = np.argmin(np.abs(x/1000. - ic[name]['x'])) # FIXME: interpolation is complicated...
 
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title(name + ' ice core', fontsize=20)
@@ -1425,13 +1425,13 @@ if temp_factor != None:
 
 # Flow line outputs
 if output_fl:
-    output = np.vstack((x, Y, a*R[0], m*R[0], Q, Qm, surf_vel))
+    output = np.vstack((x/1000., Y, a*R[0], m*R[0], Q, Qm, surf_vel))
     np.savetxt(datadir+'flow_line_output.txt', np.transpose(output),
                header='x(km) tube_width PD_accu(m/yr) PD_melting(m/yr) total_flux melting_flux PD_surf_velocity(m/yr)')
 
 # Ice cores outputs
 for name in ic:
-    ii = np.argmin(np.abs(x - ic[name]['x'])) # FIXME: interpolation is complicated...
+    ii = np.argmin(np.abs(x/1000. - ic[name]['x'])) # FIXME: interpolation is complicated...
     output = np.vstack((S[ii]-profs[ii]['z'], profs[ii]['age'], profs[ii]['x0'], profs[ii]['tau'], profs[ii]['a0']))
     prof_domains = profs[ii]['unconf']
     for i in range(len(prof_domains)):
