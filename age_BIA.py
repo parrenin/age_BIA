@@ -19,8 +19,6 @@ Ceci est un script temporaire.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Put x in m throughout the code, to avoid the 1000 factor at some place. Just convert km to m at input.
-# TODO: the corner node should be part of the upstream boundary, at least when Q[0]=0
-# TODO: Rename iso_slope_diff in just slope_diff
 # TODO: Implement varying z grid as well
 
 import sys
@@ -418,12 +416,9 @@ for traj in trajs:
             zeta = fct_zeta(omega, p[j])
             traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
             zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
-            #FIXME: call ux and uxb
-            ux1 = QH[j-1]/Y[j-1]/H_ie[j-1]*fct_domega_dzeta(zetab, p[j-1])
-            ux2 = QH[j]/Y[j]/H_ie[j]*fct_domega_dzeta(zeta, p[j])
-            # ux = (ux1 + ux2 ) / 2                           # Can we do better here?
-            ux = np.sqrt(ux1*ux2)
-            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) / ux
+            kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, p[j-1])
+            kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])
+            dage = 1000 * (traj['x'][-1]-traj['x'][-2]) * (kappa+kappab)/2
             traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
             dgammaint = 1000 * (traj['x'][-1]-traj['x'][-2]) * \
                 np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
