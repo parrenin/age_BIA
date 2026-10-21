@@ -322,7 +322,7 @@ if x_start == None and Q[0]>0:
 elif x_start == None and Q[0] == 0:
     accu_starts = [1]
 else:
-    accu_starts = [np.argmin(np.abs(x_start-x))]
+    accu_starts = [np.argmin(np.abs(x_start-x/1000.))]
 accu_ends = []
 for i in range(1, len(x)-1):
     if Q[i] > Q[i-1] and Q[i] >= Q[i+1] : #To be checked
@@ -418,7 +418,7 @@ for traj in trajs:
             zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
             kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, p[j-1])
             kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])
-            dage = (traj['x'][-1]-traj['x'][-2]) * (kappa+kappab)/2
+            dage = (traj['x'][-1]-traj['x'][-2]) * np.sqrt(kappa*kappab)
             traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
             dgammaint = (traj['x'][-1]-traj['x'][-2]) * \
                 np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
