@@ -226,6 +226,7 @@ if solid_fraction != None:
 else:
     D_depth_ie = np.array([0, 10000])
     D_depth = D_depth_ie
+    D_D = np.ones_like((D_depth_ie))
 
 # -----------------------------------------------------------
 # Reading of comparison files for ice cores
@@ -443,8 +444,9 @@ for traj in trajs:
             flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)
             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, p[j])
             geom_term = - (1-zeta)*derivative(H_ie, j)
-            slope = (slope + geom_term) #FIXME: divide by D 
-            slope = slope + derivative(S, j)
+            D = np.interp(traj['z_ie'][-1], D_depth_ie, D_D)
+            slope = (slope + geom_term) / D 
+            slope = slope + derivative(S, j) #FIXME: add integral term of d(1/D)/dx
             traj['slope'] = np.append(traj['slope'], slope)
             zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
             traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
