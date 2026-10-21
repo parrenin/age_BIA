@@ -19,6 +19,7 @@ Ceci est un script temporaire.
 # TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Implement varying z grid as well
+# TODO: Check why age is not correct at beginning of DC-BELDC flow line
 
 import sys
 import numpy as np
@@ -426,12 +427,13 @@ for traj in trajs:
             traj['gammaint'] = np.append(traj['gammaint'], gammaint)
             i0 = traj['i0']
             gamma = a[i0]*fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]*gammaint
-            #FIXME: define kappa and kappab and reuse for slope
             tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
                 * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
             traj['tau'] = np.append(traj['tau'], tau)
-            traj_term = (Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']*qq\
-                /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
+            #FIXME: define dOmega_dz_0 and reuse
+            traj_term = (kappa*traj['a0']*qq\
+                /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) \
+                    - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
             traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
             flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
