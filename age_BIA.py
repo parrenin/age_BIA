@@ -609,7 +609,7 @@ for k in range(len(index_unconf)):
      
 for name in ic:
     ic[name]['XX'] = ic[name]['x'] * np.ones(2)
-    ic[name]['S'] = np.interp(ic[name]['x'], x, S)
+    ic[name]['S'] = np.interp(ic[name]['x'], x/1000., S)
     ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
     ic[name]['DD'] = np.array([0., ic[name]['max_depth']])
 
