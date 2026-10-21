@@ -15,8 +15,6 @@ Ceci est un script temporaire.
 # TODO: Output for isochrones
 # TODO: Clean parameter file (regroup parameters, etc.)
 # TODO: Remove 'a0' and 'x0' from trajs and profs since we have 'i0' now
-# TODO: Can we take ux with an average zeta and an average p? Instead of the geometric mean of ux1 and ux2. This would prevent a singularity at bedrock.
-# TODO: Can we avoid this repetition of code for the upstream and surface trajectories? Maybe by concatenating lists of i0, z0, etc.
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Implement varying z grid as well
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
@@ -270,6 +268,7 @@ if obs_bedrock != None:
     obs_bed_depth = np.interp(x, obs_bed_x, obs_bed_depth)
     obs_bed_z = S - obs_bed_depth
 
+# Convert x in meters now
 x *= 1000
 
 # Computation of total flux Q
@@ -300,10 +299,6 @@ Qm = np.cumsum(dQmdx)
 mu = Qm / (Q - Qm)
 QH = Q - Qm
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    surf_vel = Q / Y * fct_domega_dzeta(1., p) / H
-
 
 # ----------------------------------------------------------
 # DELTA H, H_ie and S_ie
@@ -313,6 +308,15 @@ DELTA_H = D_depth[-1] - D_depth_ie[-1]
 print('DELTA_H:', DELTA_H)
 S_ie = S - DELTA_H
 H_ie = H - DELTA_H
+
+# ----------------------------------------
+# Calculation of surface velocity
+# ----------------------------------------
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    surf_vel = QH / Y * fct_domega_dzeta(1., p) / H_ie
+
 
 # ------------------------------------
 # Determination of accumulation areas
