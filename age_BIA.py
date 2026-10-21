@@ -442,9 +442,9 @@ for traj in trajs:
             slope = (slope + melt_term) / QH[j] 
             flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)
             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, p[j])
-            geom_term = derivative(B, j)+zeta*derivative(H_ie, j)
+            geom_term = - (1-zeta)*derivative(H_ie, j)
             slope = (slope + geom_term) #FIXME: divide by D 
-            # FIXME: add firn term
+            slope = slope + derivative(S, j)
             traj['slope'] = np.append(traj['slope'], slope)
             zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
             traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
