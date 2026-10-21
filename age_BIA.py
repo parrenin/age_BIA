@@ -1359,7 +1359,7 @@ for name in ic:
     
     ax2 = ax.twiny()
     for i in range(len(prof_domains)-1):
-        ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]], profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
+        ax2.plot(profs[ii]['x0'][prof_domains[i]: prof_domains[i+1]]/1000., profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='r')
     if ic[name]['comp'] != None:
         ax2.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='r', linestyle='--')
     ax2.set_xlim(left=x_left)
