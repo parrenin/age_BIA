@@ -430,11 +430,10 @@ for traj in trajs:
             tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j])*QH[j]/Q[j]/H_ie[j]) \
                 * (fct_domega_dzeta(1, p[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
             traj['tau'] = np.append(traj['tau'], tau)
-            #FIXME: define dOmega_dz_0 and reuse
-            traj_term = (kappa*traj['a0']*qq\
-                /Q[j]*QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) \
-                    - qq*a[j]*Y[j]/Q[j]**2) #FIXME: factorize Y and 1/Q
-            traj_term *= H_ie[j]/fct_domega_dzeta(zeta, p[j])*Q[j]/QH[j]   #FIXME: divide by D
+            #FIXME: re-use kappa?
+            traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j])*traj['a0']\
+                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0])/(1+gamma) - a[j]/Q[j]) #FIXME: factorize Y and 1/Q
+            traj_term *= Y[j]*H_ie[j]/fct_domega_dzeta(zeta, p[j])*qq/QH[j]   #FIXME: divide by D
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]**2*(1-qq/Q[j])*H_ie[j]/fct_domega_dzeta(zeta, p[j]) #FIXME: Divide by D
             flow_term = -fct_domega_dp(zeta, p[j])*derivative(p, j)/fct_domega_dzeta(zeta, p[j])*H_ie[j] #FIXME: Divide by D
             geom_term = derivative(B, j)+zeta*derivative(H_ie, j) #FIXME: divide by D
