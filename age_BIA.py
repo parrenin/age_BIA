@@ -129,7 +129,7 @@ def fct_domega_dp(zeta, p, s):
     return (1-s) * fct_domegaD_dp(zeta, p)
 
 def fct_domega_ds(zeta, p):
-    return zeta - fct_domegaD_dp(zeta, p)
+    return zeta - fct_omegaD(zeta, p)
 
 def fct_zeta(omega, p, s):
     # Définir la fonction dont on cherche la racine
