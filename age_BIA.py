@@ -455,7 +455,7 @@ for traj in trajs:
             traj['tau'] = np.append(traj['tau'], tau)
             #FIXME: re-use kappa?
             traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j], s[j])*traj['a0']\
-                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0], s[i0])/(1+gamma) - a[j]/Q[j]) #FIXME: factorize Y and 1/Q
+                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0], s[i0])/(1+gamma) - a[j]/Q[j])
             slope =traj_term* Y[j]*qq
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
             slope = (slope + melt_term) / QH[j] 
@@ -1224,7 +1224,7 @@ if fig_slope_maxrange == None:
     slope_max = max(-slope_min, slope_max)
 else:
     slope_max = fig_slope_maxrange
-norm = Normalize(vmin=-slope_max, vmax=slope_max)
+levels = np.arange(-slope_max, slope_max+0.000001, slope_max/50)
 
 ax2.plot(x/1000., S, label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -1237,12 +1237,9 @@ ax2top = ax2.twiny()
 ax2top.set_xlabel(r"direction of the flow $\longrightarrow$", fontsize=20)
 ax2top.xaxis.set_ticks([])
 
-#levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x']/1000., dom['mat_z'], dom['mat_slope'], levels=100,
-                 cmap='PuOr', norm=norm)
-    # cp = ax2.contour(dom['mat_x'], dom['mat_z'], dom['mat_slope'], levels=levels,
-    #                  colors='k', norm=norm)
+    cp = ax2.contourf(dom['mat_x']/1000., dom['mat_z'], dom['mat_slope'],
+                 levels=levels, cmap='PuOr')
 
 for unconf in unconf_list:
     ax2.plot(x/1000., unconf, label='Discontinuities', color='k', linewidth=4.,
@@ -1252,12 +1249,8 @@ ax2.set_xlabel('horizontal distance (km)', fontsize=19)
 ax2.set_ylabel('elevation (m)', fontsize=19)
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm)
-sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb = plt.colorbar(cp, pad=-0.06)
 cb.set_label(label='layer slope (no unit)', size=18)
-#cb.add_lines(cp)
-
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['ZZ'], linewidth=lw_core,
@@ -1292,7 +1285,7 @@ if fig_slope_maxrange == None:
     slope_max = max(-slope_min, slope_max)
 else:
     slope_max = fig_slope_maxrange
-norm = Normalize(vmin=-slope_max, vmax=slope_max)
+levels = np.arange(-slope_max, slope_max+0.000001, slope_max/50)
 
 ax2.plot(x/1000., np.zeros_like(S), label='Surface', color='k', linewidth=2.)
 if obs_bedrock is not None:
@@ -1307,8 +1300,8 @@ ax2top.xaxis.set_ticks([])
 
 #levels = np.arange(tau_min, tau_max, 0.1)
 for dom in domains_list:
-    ax2.contourf(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_slope'], levels=100,
-                 cmap='PuOr', norm=norm)
+    cp = ax2.contourf(dom['mat_x']/1000., S-dom['mat_z'], dom['mat_slope'],
+                 levels=levels, cmap='PuOr')
     # ax2.contour(dom['mat_x'], S-dom['mat_z'], dom['mat_slope'], levels=levels,
     #              colors='k', norm=norm)
 
@@ -1321,12 +1314,8 @@ ax2.set_ylabel('depth (m)', fontsize=19)
 ax2.set_ylim(ax2.get_ylim()[::-1])
 
 # Add colorbar
-sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm)
-sm.set_array([])
-cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+cb = plt.colorbar(cp, pad=-0.06)
 cb.set_label(label='layer slope (no unit)', size=18)
-cb.add_lines(cp)
-
 
 for name in ic:
     ax2.plot(ic[name]['XX'], ic[name]['DD'], linewidth=lw_core,
