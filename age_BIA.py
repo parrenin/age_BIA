@@ -94,7 +94,7 @@ def grid(para):
         nb_steps = para['nb_steps']
     except KeyError:
         resolution = para['resolution']
-        nb_steps = m.floor((end-start)/resolution)
+        nb_steps = math.floor((end-start)/resolution)
         end = start + resolution * nb_steps
     if para['type'] == 'regular':
         eps = (end-start)/nb_steps/2
@@ -515,7 +515,7 @@ for traj in trajs:
                 zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][j-1]*traj['a0']
                 traj['zieb_iso'][j] = zieb_iso
                 ziea_iso = traj['z_ie'][j]+dage*tau*traj['a0']
-                if j == i0+1 and traj['in'] == 'surface':
+                if j == i0+1 and traj['in'] == 'surf':
                     ziea_iso = S_ie[i0+1]
                 traj['ziea_iso'][j-1] = ziea_iso
             if j == len(x)-1:
