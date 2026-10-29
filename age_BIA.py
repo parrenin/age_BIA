@@ -550,7 +550,7 @@ for i in range(len(x)-1): #FIXME: why -1?
             profs[i]['cp_iso_depth'][j] = np.interp(x[i], cp_iso_x, cp_iso_depth[j,:])
             profs[i]['cp_iso_z'][j] = np.interp(x[i]/1000., cp_iso_x, cp_iso_z[j, :])
 
-    
+
 # ----------------------------------------
 # Computation of surface quantities
 # ----------------------------------------
@@ -560,9 +560,11 @@ surf_tau = np.zeros_like(x)
 surf_slope = np.zeros_like(x)
 for i in range(len(x)):
     try: #FIXME: can we avoid this try by being smarter?
-        surf_steady_age[i] = interp1d(profs[i]['z'], profs[i]['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
-        surf_tau[i] = interp1d(profs[i]['z'], profs[i]['tau'], kind='linear', fill_value="extrapolate")(S[i])
-        surf_slope[i] = interp1d(profs[i]['z'], profs[i]['slope'], kind='linear', fill_value="extrapolate")(S[i])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            surf_steady_age[i] = interp1d(profs[i]['z'], profs[i]['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
+            surf_tau[i] = interp1d(profs[i]['z'], profs[i]['tau'], kind='linear', fill_value="extrapolate")(S[i])
+            surf_slope[i] = interp1d(profs[i]['z'], profs[i]['slope'], kind='linear', fill_value="extrapolate")(S[i])
     except:
         surf_steady_age[i] = np.nan
         surf_tau[i] = np.nan
@@ -646,6 +648,7 @@ for name in ic:
     ic[name]['S'] = np.interp(ic[name]['x'], x/1000., S)
     ic[name]['ZZ'] = np.array([ic[name]['S'], ic[name]['S']-ic[name]['max_depth']])
     ic[name]['DD'] = np.array([0., ic[name]['max_depth']])
+
 
 # ---------------------
 # Trajectories figure
