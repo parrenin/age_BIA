@@ -1090,7 +1090,7 @@ for dom in domains_list:
                      norm=norm)
 
 for unconf in unconf_list:
-    ax2.plot(x, S-unconf, label='Discontinuities', color='k', linewidth=4.,
+    ax2.plot(x/1000., S-unconf, label='Discontinuities', color='k', linewidth=4.,
              linestyle='--')
 
 
