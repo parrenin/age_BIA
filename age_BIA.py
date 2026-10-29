@@ -139,7 +139,9 @@ def fct_zeta(omega, p, s):
         return fct_domega_dzeta(zeta, p, s)
 
     # Résoudre numériquement
-    zeta_solution = fsolve(equation, omega, fprime=derivative)  # omega is an initial value
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        zeta_solution = fsolve(equation, omega, fprime=derivative)  # omega is an initial value
     return zeta_solution[0]
 
 def integrand(zeta, p, s, H, a, mu):
@@ -374,9 +376,7 @@ if Q[0]>0:
     for z in np.arange(zz_start, S_ie[0], z_step):
         xx = np.concatenate((np.array([x[0]]), np.ones(len(x)-1)*np.nan))
         zz = np.concatenate((np.array([z]), np.ones(len(x)-1)*np.nan))
-        with warnings.catch_warnings(): #FIXME: why do we need this 'with'?
-            warnings.simplefilter("ignore")
-            age = np.array([integrate_age((zz[0]-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
+        age = np.array([integrate_age((zz[0]-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
         zeta = (zz[0]-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0], s[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
