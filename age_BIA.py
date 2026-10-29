@@ -376,8 +376,8 @@ if Q[0]>0:
         zz = np.concatenate((np.array([z]), np.ones(len(x)-1)*np.nan))
         with warnings.catch_warnings(): #FIXME: why do we need this 'with'?
             warnings.simplefilter("ignore")
-            age = np.array([integrate_age((zz-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
-        zeta = (zz-B[0])/H_ie[0]
+            age = np.array([integrate_age((zz[0]-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
+        zeta = (zz[0]-B[0])/H_ie[0]
         omega = fct_omega(zeta, p[0], s[0]) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
         gammaint = np.array([ H_ie[0]/a[0]*Q[0]/QH[0]* (1/fct_domega_dzeta(zeta, p[0], s[0]) \
