@@ -75,7 +75,7 @@ comp_surf_age = None
 x_start = None
 solid_fraction = None
 output_fl = False
-fig_ic_slope = False
+fig_ic_slope_diff = False
 x_grid = {}
 fig_slope_maxrange = None
 
@@ -1401,20 +1401,20 @@ for name in ic:
     ax3.tick_params(axis='x', colors='orange')
     ax3.set_xlim(left=0)
 
-    if fig_ic_slope:
-        ax4=ax.twiny()
-        for i in range(len(prof_domains)-1):
+    ax4=ax.twiny()
+    for i in range(len(prof_domains)-1):
+        if fig_ic_slope_diff:
             ax4.plot(profs[ii]['slope_diff'][prof_domains[i]: prof_domains[i+1]],
                      profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet', linestyle='dotted')
-            ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
-                     profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
-                     color='violet')
-        if ic[name]['comp'] != None:
-            ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
-        ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
-        ax4.spines['top'].set_color('violet')
-        ax4.spines['top'].set_position(('axes', 1.2))
-        ax4.tick_params(axis='x', colors='violet')
+        ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
+                 profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
+                 color='violet')
+    if ic[name]['comp'] != None:
+        ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
+    ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
+    ax4.spines['top'].set_color('violet')
+    ax4.spines['top'].set_position(('axes', 1.2))
+    ax4.tick_params(axis='x', colors='violet')
 
     plt.savefig(datadir+name+'_ice_core.'+fig_format,
                     format=fig_format, bbox_inches='tight')

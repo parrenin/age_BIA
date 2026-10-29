@@ -11,7 +11,6 @@ fig_age_iso: [1, 2, 5, 10, 20, 50, 100]
 step_traj: 10
 scaling_age: 100.
 fig_format: 'svg'
-fig_ic_slope: True
 ic:
     "IC1":
         "x": 10.  # X coordinate of the drilling, in km

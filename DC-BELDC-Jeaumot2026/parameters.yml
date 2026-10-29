@@ -19,7 +19,6 @@ comp_iso_ages: 'isochrones-ages.txt'
 solid_fraction: 'solid_fraction.txt'
 output_fl: True
 comp_surf_vel: 'surf_velocity_age_flow_line.txt'
-fig_ic_slope: True
 fig_slope_maxrange: 0.5
 ic:
     "EDC":
