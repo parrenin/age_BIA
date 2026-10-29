@@ -35,7 +35,6 @@ import resource
 import warnings
 import pandas as pd
 import math
-from abia_math import grid
 
 # Registration of start time
 START_TIME = time.perf_counter()
@@ -87,6 +86,38 @@ globals().update(para)
 # ---------------------------------------------------------
 # Fonctions definition
 # ---------------------------------------------------------
+
+def grid(para):
+    start = para['start']
+    end = para['end']
+    try:
+        nb_steps = para['nb_steps']
+    except KeyError:
+        resolution = para['resolution']
+        nb_steps = m.floor((end-start)/resolution)
+        end = start + resolution * nb_steps
+    if para['type'] == 'regular':
+        eps = (end-start)/nb_steps/2
+        grid = np.arange(start, end+eps, (end-start)/nb_steps)
+    elif para['type'] == 'linear_step':
+        ratio = para['ratio']
+        if ratio == None:
+            ratio = 2/(nb_steps+1)
+        eps = (1.-ratio)/nb_steps
+        grid = np.arange(ratio, 2.-ratio+eps, (2.-2*ratio)/(nb_steps-1))
+        grid = grid * (end-start)/nb_steps
+        grid = np.cumsum(np.concatenate((np.array([start]), grid)))
+    else:
+        print('Type of grid not recognized.')
+    try:
+        inverted = para['inverted']
+    except KeyError:
+        inverted = False
+    if inverted:
+        grid = grid[::-1]
+        grid = grid[:-1]-grid[1:]
+        grid = np.cumsum(np.concatenate((np.array([start]), grid)))
+    return grid
 
 def derivative(arr, i):
     if i==0:
