@@ -387,9 +387,11 @@ if Q[0]>0:
         tau = np.array([qq/Q[0]])
         tau = np.concatenate(( tau, np.ones(len(x)-1)*np.nan ))
         slope = np.concatenate(( np.array([0.]), np.ones(len(x)-1)*np.nan ))
+        zieb_iso = np.ones(len(x))*np.nan
+        ziea_iso = np.ones(len(x))*np.nan
         traj = {'q': qq, 'x': xx, 'z_ie': zz, 'steady_age': age, 'in': 'upstream',
                 'out': None, 'x0': x[0], 'a0': a[0], 'i0': 0, 'gammaint': gammaint,
-                'tau': tau, 'zieb_iso': np.array([np.nan]), 'ziea_iso': np.array([]),
+                'tau': tau, 'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso,
                 'slope': slope}
         trajs.append(traj)
 
@@ -412,8 +414,8 @@ for k in range(len(accu_starts)):
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.]), np.ones(len(x)-i-1)*np.nan ])
         sie_slope = derivative(S_ie, i)
         slope = np.concatenate([np.ones(i)*np.nan, np.array([sie_slope]), np.ones(len(x)-i-1)*np.nan ])
-        zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]])])
-        ziea_iso = np.ones(i)*np.nan
+        zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]]), np.ones(len(x)-i-1)*np.nan ])
+        ziea_iso = np.ones(len(x))*np.nan
         traj = {'q': Q[i], 'x':xx, 'z_ie':zz, 'steady_age': age, 'in': 'surf', 'out': None,
                 'x0': x[i], 'a0': a[i], 'i0': i, 'gammaint': gammaint, 'tau': tau,
                 'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso, 'slope': slope}
@@ -434,7 +436,7 @@ for traj in trajs:
     profs[i0]['x0'] = np.append(profs[i0]['x0'], traj['x0'])
     profs[i0]['a0'] = np.append(profs[i0]['a0'], traj['a0'])
     profs[i0]['i0'] = np.append(profs[i0]['i0'], traj['i0'])
-    profs[i0]['zieb_iso'] = np.append(profs[i0]['zieb_iso'], traj['zieb_iso'][-1])
+    profs[i0]['zieb_iso'] = np.append(profs[i0]['zieb_iso'], traj['zieb_iso'][i0])
 
     j = i0 + 1
     while j < len(x) :
@@ -471,12 +473,12 @@ for traj in trajs:
             slope = (slope + geom_term) / D 
             slope = slope + derivative(S, j) #FIXME: add integral term of d(1/D)/dx
             traj['slope'][j] = slope
-            zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][-2]*traj['a0']
-            traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
+            zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][j-1]*traj['a0']
+            traj['zieb_iso'][j] = zieb_iso
             ziea_iso = traj['z_ie'][j]+dage*tau*traj['a0']
             if j == i0+1 and traj['in'] == 'surface':
-                ziea_iso = S_ie[i+1]
-            traj['ziea_iso'] = np.append(traj['ziea_iso'], ziea_iso)
+                ziea_iso = S_ie[i0+1]
+            traj['ziea_iso'][j-1] = ziea_iso
             if j == len(x)-1:
                 traj['out'] = 'downstream'
             profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][j])
@@ -486,8 +488,8 @@ for traj in trajs:
             profs[j]['i0'] = np.append(profs[j]['i0'], traj['i0'])
             profs[j]['tau'] = np.append(profs[j]['tau'], traj['tau'][j])
             profs[j]['slope'] = np.append(profs[j]['slope'], traj['slope'][j])
-            profs[j]['zieb_iso'] = np.append(profs[j]['zieb_iso'], traj['zieb_iso'][-1])
-            profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], traj['ziea_iso'][-1])
+            profs[j]['zieb_iso'] = np.append(profs[j]['zieb_iso'], traj['zieb_iso'][j])
+            profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], traj['ziea_iso'][j-1])
             if i0 in accu_starts[1:]:
                 profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
         elif Q[j] < qq or traj['out'] == 'surf':
@@ -499,8 +501,8 @@ for traj in trajs:
             traj['tau'][j] = np.nan
             traj['slope'][j] = np.nan
             traj['out'] = 'surf'
-            traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
-            traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
+            traj['zieb_iso'][j] = np.nan
+            traj['ziea_iso'][j-1] = np.nan
         elif Qm[j] > qq or traj['out'] == 'bed':
             if traj['out'] != 'bed':
                 profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], np.nan)
@@ -510,10 +512,10 @@ for traj in trajs:
             traj['tau'][j] = np.nan
             traj['slope'][j] = np.nan
             traj['out'] = 'bed'
-            traj['zieb_iso'] = np.append(traj['zieb_iso'], np.nan)
-            traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
+            traj['zieb_iso'][j] = np.nan
+            traj['ziea_iso'][j-1] = np.nan
         j += 1
-    traj['ziea_iso'] = np.append(traj['ziea_iso'], np.nan)
+    traj['ziea_iso'][len(x)-1] = np.nan
     traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
     traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
     traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
@@ -1402,8 +1404,8 @@ for name in ic:
     if fig_ic_slope:
         ax4=ax.twiny()
         for i in range(len(prof_domains)-1):
-            # ax4.plot(profs[ii]['slope_diff'][prof_domains[i]: prof_domains[i+1]],
-            #          profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet', linestyle='dotted')
+            ax4.plot(profs[ii]['slope_diff'][prof_domains[i]: prof_domains[i+1]],
+                     profs[ii]['z'][prof_domains[i]: prof_domains[i+1]], color='violet', linestyle='dotted')
             ax4.plot(profs[ii]['slope'][prof_domains[i]: prof_domains[i+1]],
                      profs[ii]['z'][prof_domains[i]: prof_domains[i+1]],
                      color='violet')
