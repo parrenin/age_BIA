@@ -1,0 +1,3 @@
+#x_inv(km)	accu_opt(ice-m/yr)
+0. 0.02
+50. 0.05

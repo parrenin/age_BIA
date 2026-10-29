@@ -1,0 +1,3 @@
+# distance(km) melting(ice-m/yr)
+0. 0.001
+50. 0.01
