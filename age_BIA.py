@@ -52,7 +52,7 @@ print('Parameters directory is: ', datadir)
 # ---------------------------------------------------------
 
 # Default values for parameters, to prevent spyder errors
-x_left = 0.
+x_left = 0. #FIXME: the 3 following lines do not seem necessary anymore
 x_right = 100.
 x_step = 1.
 z_step = 5.
@@ -372,8 +372,8 @@ for i in range(len(x)):
 if Q[0]>0:
     zz_start = B[0] + ((S_ie[0] - B[0]) % z_step)
     for z in np.arange(zz_start, S_ie[0], z_step):
-        xx = np.array([x[0]])
-        zz = np.array([z])
+        xx = np.concatenate((np.array([x[0]]), np.ones(len(x)-1)*np.nan))
+        zz = np.concatenate((np.array([z]), np.ones(len(x)-1)*np.nan))
         with warnings.catch_warnings(): #FIXME: why do we need this 'with'?
             warnings.simplefilter("ignore")
             age = np.array([integrate_age((zz-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
@@ -401,8 +401,8 @@ for k in range(len(accu_starts)):
         iend = len(x)-1
     print('Accu area n°', k, 'starts at x=',x[istart],'km and ends at x=', x[iend], 'km')
     for i in range(istart, iend+1):
-        xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]])])
-        zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]])])
+        xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]]), np.ones(len(x)-i-1)*np.nan ])
+        zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]]), np.ones(len(x)-i-1)*np.nan])
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         gammaint = np.concatenate([np.ones(i)*np.nan, np.array([0.])])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.])])
@@ -423,7 +423,7 @@ for traj in trajs:
     i0 = traj['i0']
     qq = traj['q']
 
-    profs[i0]['z_ie'] = np.append(profs[i0]['z_ie'], traj['z_ie'][-1])
+    profs[i0]['z_ie'] = np.append(profs[i0]['z_ie'], traj['z_ie'][i0])
     profs[i0]['steady_age'] = np.append(profs[i0]['steady_age'], traj['steady_age'][-1])
     profs[i0]['tau'] = np.append(profs[i0]['tau'], traj['tau'][-1])
     profs[i0]['slope'] = np.append(profs[i0]['slope'], traj['slope'][-1])
@@ -434,17 +434,17 @@ for traj in trajs:
 
     j = i0 + 1
     while j < len(x) :
-        traj['x'] = np.append(traj['x'], x[j])
+        traj['x'][j] = x[j]
         if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
             omega = (qq-Qm[j])/(Q[j]-Qm[j])
             zeta = fct_zeta(omega, p[j], s[j])
-            traj['z_ie'] = np.append(traj['z_ie'], B[j] + zeta * H_ie[j])
-            zetab = (traj['z_ie'][-2]-B[j-1])/H_ie[j-1]
+            traj['z_ie'][j] = B[j] + zeta * H_ie[j]
+            zetab = (traj['z_ie'][j-1]-B[j-1])/H_ie[j-1]
             kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, p[j-1], s[j-1])
             kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j], s[j])
-            dage = (traj['x'][-1]-traj['x'][-2]) * np.sqrt(kappa*kappab)
+            dage = (traj['x'][j]-traj['x'][j-1]) * np.sqrt(kappa*kappab)
             traj['steady_age'] = np.append(traj['steady_age'], traj['steady_age'][-1]+dage)
-            dgammaint = (traj['x'][-1]-traj['x'][-2]) * \
+            dgammaint = (traj['x'][j]-traj['x'][j-1]) * \
                 np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
             gammaint = traj['gammaint'][-1]+dgammaint
             traj['gammaint'] = np.append(traj['gammaint'], gammaint)
@@ -463,19 +463,19 @@ for traj in trajs:
                 -fct_domega_ds(zeta, p[j])*derivative(s, j)
             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, p[j], s[j])
             geom_term = - (1-zeta)*derivative(H_ie, j)
-            D = np.interp(traj['z_ie'][-1], D_depth_ie, D_D)
+            D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
             slope = (slope + geom_term) / D 
             slope = slope + derivative(S, j) #FIXME: add integral term of d(1/D)/dx
             traj['slope'] = np.append(traj['slope'], slope)
-            zieb_iso = traj['z_ie'][-2]-dage*traj['tau'][-2]*traj['a0']
+            zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][-2]*traj['a0']
             traj['zieb_iso'] = np.append(traj['zieb_iso'], zieb_iso)
-            ziea_iso = traj['z_ie'][-1]+dage*tau*traj['a0']
+            ziea_iso = traj['z_ie'][j]+dage*tau*traj['a0']
             if j == i0+1 and traj['in'] == 'surface':
                 ziea_iso = S_ie[i+1]
             traj['ziea_iso'] = np.append(traj['ziea_iso'], ziea_iso)
             if j == len(x)-1:
                 traj['out'] = 'downstream'
-            profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][-1])
+            profs[j]['z_ie'] = np.append(profs[j]['z_ie'], traj['z_ie'][j])
             profs[j]['steady_age'] = np.append(profs[j]['steady_age'], traj['steady_age'][-1])
             profs[j]['x0'] = np.append(profs[j]['x0'], traj['x0'])
             profs[j]['a0'] = np.append(profs[j]['a0'], traj['a0'])
@@ -489,7 +489,7 @@ for traj in trajs:
         elif Q[j] < qq or traj['out'] == 'surf':
             if traj['out'] != 'surf':
                 profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], np.nan)
-            traj['z_ie'] = np.append(traj['z_ie'], np.nan)
+            traj['z_ie'][j] = np.nan
             traj['steady_age'] = np.append(traj['steady_age'], np.nan)
             traj['tau'] = np.append(traj['tau'], np.nan)
             traj['slope'] = np.append(traj['slope'], np.nan)
@@ -499,7 +499,7 @@ for traj in trajs:
         elif Qm[j] > qq or traj['out'] == 'bed':
             if traj['out'] != 'bed':
                 profs[j-1]['ziea_iso'] = np.append(profs[j-1]['ziea_iso'], np.nan)
-            traj['z_ie'] = np.append(traj['z_ie'], np.nan)
+            traj['z_ie'][j] = np.nan
             traj['steady_age'] = np.append(traj['steady_age'], np.nan)
             traj['tau'] = np.append(traj['tau'], np.nan)
             traj['slope'] = np.append(traj['slope'], np.nan)
