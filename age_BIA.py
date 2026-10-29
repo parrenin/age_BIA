@@ -316,7 +316,12 @@ dQmdx = (x[1:]-x[:-1]) * \
 dQmdx = np.insert(dQmdx, 0, Qm_left)
 Qm = np.cumsum(dQmdx)
 
-mu = Qm / (Q - Qm)
+if Q[0] > 0:
+    mu = Qm / (Q - Qm)
+else:
+    mu = np.zeros_like(Q)
+    mu[1:] = Qm[1:] / (Q[1:] - Qm[1:])
+    mu[0] = mu[1]
 QH = Q - Qm
 
 
@@ -405,7 +410,7 @@ for k in range(len(accu_starts)):
         iend = accu_ends[k]
     except:
         iend = len(x)-1
-    print('Accu area n°', k, 'starts at x=',x[istart],'km and ends at x=', x[iend], 'km')
+    print('Accu area n°', k, 'starts at x=',x[istart]/1000.,'km and ends at x=', x[iend]/1000., 'km')
     for i in range(istart, iend+1):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]]), np.ones(len(x)-i-1)*np.nan ])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]]), np.ones(len(x)-i-1)*np.nan ])
