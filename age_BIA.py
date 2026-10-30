@@ -119,15 +119,12 @@ def grid(para):
         grid = np.cumsum(np.concatenate((np.array([start]), grid)))
     return grid
 
-def derivative(arr, i):
-    if i==0:
-        return (arr[1]-arr[0])/(x[1]-x[0])
-    elif i==len(arr)-1:
-        return (arr[-1]-arr[-2])/(x[-1]-x[-2])
-    elif i>0 and i<len(arr)-1:
-        return (arr[i+1]-arr[i-1])/(x[i+1]-x[i-1])
-    else:
-        print('i index out of array length in derivative fct.')
+def d_dx(arr):
+    der = np.ones_like(arr)*np.nan
+    der[1:-1] = (arr[2:]-arr[:-2]) / (x[2:]-x[:-2])
+    der[0] = (arr[1]-arr[0]) / (x[1]-x[0])
+    der[-1] = (arr[-1]-arr[-2]) / (x[-1]-x[-2])
+    return der
 
 def fct_omegaD(zeta, i):
     return 1 - (p[i] + 2) / (p[i] + 1) * (1 - zeta) + 1 / (p[i] + 1) * (1 - zeta) ** (p[i] + 2)
@@ -395,6 +392,16 @@ for i in range(1, len(x)-1):
 
 
 # --------------------------------------
+# Calculation of x derivatives
+# --------------------------------------
+
+dSie_dx = d_dx(S_ie)
+dp_dx = d_dx(p)
+ds_dx = d_dx(s)
+dS_dx = d_dx(S)
+dHie_dx = d_dx(H_ie)
+
+# --------------------------------------
 # Initialisation of trajectories
 # --------------------------------------
 
@@ -450,7 +457,7 @@ for k in range(len(accu_starts)):
         age = np.concatenate([np.ones(i)*np.nan, np.array([0.]), np.ones(len(x)-i-1)*np.nan ])
         gammaint = np.concatenate([np.ones(i)*np.nan, np.array([0.]), np.ones(len(x)-i-1)*np.nan ])
         tau = np.concatenate([np.ones(i)*np.nan, np.array([1.]), np.ones(len(x)-i-1)*np.nan ])
-        sie_slope = derivative(S_ie, i)
+        sie_slope = dSie_dx[i]
         slope = np.concatenate([np.ones(i)*np.nan, np.array([sie_slope]), np.ones(len(x)-i-1)*np.nan ])
         zieb_iso = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i-1]]), np.ones(len(x)-i-1)*np.nan ])
         ziea_iso = np.ones(len(x))*np.nan
@@ -504,13 +511,13 @@ for traj in trajs:
             slope =traj_term* Y[j]*qq
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
             slope = (slope + melt_term) / QH[j] 
-            flow_term = -fct_domega_dp(zeta, j)*derivative(p, j) \
-                -fct_domega_ds(zeta, j)*derivative(s, j)
+            flow_term = -fct_domega_dp(zeta, j)*dp_dx[j] \
+                -fct_domega_ds(zeta, j)*ds_dx[j]
             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, j)
-            geom_term = - (1-zeta)*derivative(H_ie, j)
+            geom_term = - (1-zeta)*dHie_dx[j]
             D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
             slope = (slope + geom_term) / D 
-            slope = slope + derivative(S, j) #FIXME: add integral term of d(1/D)/dx
+            slope = slope + dS_dx[j] #FIXME: add integral term of d(1/D)/dx
             traj['slope'][j] = slope
             if slope_diff:
                 zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][j-1]*traj['a0']
