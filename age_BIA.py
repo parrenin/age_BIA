@@ -129,45 +129,45 @@ def derivative(arr, i):
     else:
         print('i index out of array length in derivative fct.')
 
-def fct_omegaD(zeta, p):
-    return 1 - (p + 2) / (p + 1) * (1 - zeta) + 1 / (p + 1) * (1 - zeta) ** (p + 2)
+def fct_omegaD(zeta, i):
+    return 1 - (p[i] + 2) / (p[i] + 1) * (1 - zeta) + 1 / (p[i] + 1) * (1 - zeta) ** (p[i] + 2)
 
-def fct_omega(zeta, p, s):
-    return s*zeta + (1-s)*fct_omegaD(zeta, p)
+def fct_omega(zeta, i):
+    return s[i]*zeta + (1-s[i])*fct_omegaD(zeta, i)
 
-def fct_domegaD_dzeta(zeta, p):
-    return (p + 2) / (p + 1) * (1 - (1 - zeta) ** (p + 1))
+def fct_domegaD_dzeta(zeta, i):
+    return (p[i] + 2) / (p[i] + 1) * (1 - (1 - zeta) ** (p[i] + 1))
 
-def fct_domega_dzeta(zeta, p, s):
-    return s + (1-s)*fct_domegaD_dzeta(zeta, p)
+def fct_domega_dzeta(zeta, i):
+    return s[i] + (1-s[i])*fct_domegaD_dzeta(zeta, i)
 
-def fct_d2omegaD_dzeta2(zeta, p):
-    return (p + 2) * (1 - zeta)**p
+def fct_d2omegaD_dzeta2(zeta, i):
+    return (p[i] + 2) * (1 - zeta)**p[i]
 
-def fct_d2omega_dzeta2(zeta, p, s):
-    return (1-s) * fct_d2omegaD_dzeta2(zeta, p)
+def fct_d2omega_dzeta2(zeta, i):
+    return (1-s[i]) * fct_d2omegaD_dzeta2(zeta, i)
 
-def fct_domegaD_dp(zeta, p):
-    term1 = (1-zeta)/(p+1)**2
-    term2 = -(1-zeta)**(p+2)/(p+1)**2
+def fct_domegaD_dp(zeta, i):
+    term1 = (1-zeta)/(p[i]+1)**2
+    term2 = -(1-zeta)**(p[i]+2)/(p[i]+1)**2
     if zeta < 1:
-        term3 = (1-zeta)**(p+2)*math.log(1-zeta)/(p+1)
+        term3 = (1-zeta)**(p[i]+2)*math.log(1-zeta)/(p[i]+1)
     else:
         term3 = 0.
     return term1 + term2 + term3
 
-def fct_domega_dp(zeta, p, s):
-    return (1-s) * fct_domegaD_dp(zeta, p)
+def fct_domega_dp(zeta, i):
+    return (1-s[i]) * fct_domegaD_dp(zeta, i)
 
-def fct_domega_ds(zeta, p):
-    return zeta - fct_omegaD(zeta, p)
+def fct_domega_ds(zeta, i):
+    return zeta - fct_omegaD(zeta, i)
 
-def fct_zeta(omega, p, s):
+def fct_zeta(omega, i):
     # Définir la fonction dont on cherche la racine
     def equation(zeta):
-        return fct_omega(zeta, p, s) - omega
+        return fct_omega(zeta, i) - omega
     def derivative(zeta):
-        return fct_domega_dzeta(zeta, p, s)
+        return fct_domega_dzeta(zeta, i)
 
     # Résoudre numériquement
     with warnings.catch_warnings():
@@ -176,22 +176,23 @@ def fct_zeta(omega, p, s):
                                factor=1)  # omega is an initial value
     return zeta_solution[0]
 
-def integrand(zeta, p, s, H, a, mu):
+def integrand(zeta, i):
     """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
-    return (H * (1 + mu)) / (a * (fct_omega(zeta, p, s) + mu))
+    mu = Qm[i] / QH[i]
+    return (H[i] * (1 + mu)) / (a[i] * (fct_omega(zeta, i) + mu))
 
-def integrate_age(zeta_min, zeta_max, p, s, H, a, mu):
+def integrate_age(zeta_min, zeta_max, i):
     """Intègre l'intégrande entre zeta_min et zeta_max."""
     result, _ = quad(
-        lambda z: integrand(z, p, s, H, a, mu),
+        lambda z: integrand(z, i),
         zeta_min,
         zeta_max
     )
     return result
 
 def fct_gamma_int(j, qq, zeta):
-    return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, p[j], s[j])**3 \
-        *fct_d2omega_dzeta2(zeta, p[j], s[j])
+    return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, j)**3 \
+        *fct_d2omega_dzeta2(zeta, j)
     
 
 
@@ -370,9 +371,9 @@ H_ie = H - DELTA_H
 # Calculation of surface velocity
 # ----------------------------------------
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    surf_vel = QH / Y * fct_domega_dzeta(1., p, s) / H_ie
+surf_vel = np.ones_like(x)*np.nan
+for i in range(len(x)): # FIXME: avoid this loop with a vector function
+    surf_vel[i] = QH[i] / Y[i] * fct_domega_dzeta(1., i) / H_ie[i]
 
 
 # ------------------------------------
@@ -413,13 +414,13 @@ if Q[0]>0:
     for z in np.arange(zz_start, S_ie[0], z_step):
         xx = np.concatenate((np.array([x[0]]), np.ones(len(x)-1)*np.nan))
         zz = np.concatenate((np.array([z]), np.ones(len(x)-1)*np.nan))
-        age = np.array([integrate_age((zz[0]-B[0])/H_ie[0], 1, p[0], s[0], H_ie[0], a[0], mu[0])])
+        age = np.array([integrate_age((zz[0]-B[0])/H_ie[0], 1., 0)])
         age = np.concatenate(( age, np.ones(len(x)-1)*np.nan ))
         zeta = (zz[0]-B[0])/H_ie[0]
-        omega = fct_omega(zeta, p[0], s[0]) 
+        omega = fct_omega(zeta, 0) 
         qq = Qm[0] + (Q[0]-Qm[0]) * omega
-        gammaint = np.array([ H_ie[0]/a[0]*Q[0]/QH[0]* (1/fct_domega_dzeta(zeta, p[0], s[0]) \
-                                                        - 1/fct_domega_dzeta(1, p[0], s[0])) ])
+        gammaint = np.array([ H_ie[0]/a[0]*Q[0]/QH[0]* (1/fct_domega_dzeta(zeta, 0) \
+                                                        - 1/fct_domega_dzeta(1, 0)) ])
         gammaint = np.concatenate(( gammaint, np.ones(len(x)-1)*np.nan ))
         tau = np.array([qq/Q[0]])
         tau = np.concatenate(( tau, np.ones(len(x)-1)*np.nan ))
@@ -481,11 +482,11 @@ for traj in trajs:
         traj['x'][j] = x[j]
         if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
             omega = (qq-Qm[j])/(Q[j]-Qm[j])
-            zeta = fct_zeta(omega, p[j], s[j])
+            zeta = fct_zeta(omega, j)
             traj['z_ie'][j] = B[j] + zeta * H_ie[j]
             zetab = (traj['z_ie'][j-1]-B[j-1])/H_ie[j-1]
-            kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, p[j-1], s[j-1])
-            kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j], s[j])
+            kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, j-1)
+            kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)
             dage = (traj['x'][j]-traj['x'][j-1]) * np.sqrt(kappa*kappab)
             traj['steady_age'][j] =traj['steady_age'][j-1]+dage
             dgammaint = (traj['x'][j]-traj['x'][j-1]) * \
@@ -493,19 +494,19 @@ for traj in trajs:
             gammaint = traj['gammaint'][j-1]+dgammaint
             traj['gammaint'][j] = gammaint
             i0 = traj['i0']
-            gamma = a[i0]*fct_domega_dzeta(1, p[i0], s[i0])*QH[i0]/Q[i0]/H_ie[i0]*gammaint
-            tau = qq/Q[j] / (fct_domega_dzeta(zeta, p[j], s[j])*QH[j]/Q[j]/H_ie[j]) \
-                * (fct_domega_dzeta(1, p[i0], s[i0])*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
+            gamma = a[i0]*fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]*gammaint
+            tau = qq/Q[j] / (fct_domega_dzeta(zeta, j)*QH[j]/Q[j]/H_ie[j]) \
+                * (fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
             traj['tau'][j] = tau
             #FIXME: re-use kappa?
-            traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, p[j], s[j])*traj['a0']\
-                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., p[i0], s[i0])/(1+gamma) - a[j]/Q[j])
+            traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)*traj['a0']\
+                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., i0)/(1+gamma) - a[j]/Q[j])
             slope =traj_term* Y[j]*qq
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
             slope = (slope + melt_term) / QH[j] 
-            flow_term = -fct_domega_dp(zeta, p[j], s[j])*derivative(p, j) \
-                -fct_domega_ds(zeta, p[j])*derivative(s, j)
-            slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, p[j], s[j])
+            flow_term = -fct_domega_dp(zeta, j)*derivative(p, j) \
+                -fct_domega_ds(zeta, j)*derivative(s, j)
+            slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, j)
             geom_term = - (1-zeta)*derivative(H_ie, j)
             D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
             slope = (slope + geom_term) / D 
