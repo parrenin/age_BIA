@@ -442,7 +442,7 @@ for k in range(len(accu_starts)):
         iend = accu_ends[k]
     except:
         iend = len(x)-1
-    print('Accu area n°', k, 'starts at x=',x[istart]/1000.,'km and ends at x=', x[iend]/1000., 'km')
+    print(f"Accu area n° {k} starts at x= {x[istart]/1000.:.3f} km and ends at x= {x[iend]/1000.:.3f} km")
     for i in range(istart, iend+1):
         xx = np.concatenate([np.ones(i)*np.nan, np.array([x[i]]), np.ones(len(x)-i-1)*np.nan ])
         zz = np.concatenate([np.ones(i)*np.nan, np.array([S_ie[i]]), np.ones(len(x)-i-1)*np.nan ])
