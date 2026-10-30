@@ -465,114 +465,265 @@ for k in range(len(accu_starts)):
                 'zieb_iso': zieb_iso, 'ziea_iso': ziea_iso, 'slope': slope}
         trajs.append(traj)
 
+print('Before following trajectores:',
+      round(time.perf_counter()-START_TIME, 4), 's.')     
+
 # ------------------------------
-# Following of trajectories
+# Following of trajectories, batch by column
 # ------------------------------
 
-for traj in trajs:
-    i0 = traj['i0']
-    qq = traj['q']
+ntraj = len(trajs)
+i0_arr = np.array([t['i0'] for t in trajs])
+q_arr = np.array([t['q'] for t in trajs])
+a0_arr = np.array([t['a0'] for t in trajs])
+x0_arr = np.array([t['x0'] for t in trajs])
+in_arr = np.array([t['in'] for t in trajs])
 
-    profs[i0]['z_ie'].append( traj['z_ie'][i0] )
-    profs[i0]['steady_age'].append( traj['steady_age'][i0] )
-    profs[i0]['tau'].append( traj['tau'][i0] )
-    profs[i0]['slope'].append( traj['slope'][i0] )
-    profs[i0]['x0'].append( traj['x0'] )
-    profs[i0]['a0'].append( traj['a0'] )
-    profs[i0]['i0'].append( traj['i0'] )
-    if slope_diff:
-        profs[i0]['zieb_iso'].append( traj['zieb_iso'][i0] )
+z_ie = np.full((ntraj, len(x)), np.nan)
+steady_age = np.full((ntraj, len(x)), np.nan)
+gammaint = np.full((ntraj, len(x)), np.nan)
+tau = np.full((ntraj, len(x)), np.nan)
+slope = np.full((ntraj, len(x)), np.nan)
+zieb_iso = np.full((ntraj, len(x)), np.nan)
+ziea_iso = np.full((ntraj, len(x)), np.nan)
 
-    j = i0 + 1
-    while j < len(x) and traj['out'] == None:
-        traj['x'][j] = x[j]
-        if Q[j] >= qq and Qm[j] <= qq: 
-            omega = (qq-Qm[j])/(Q[j]-Qm[j])
-            zeta = fct_zeta(omega, j)
-            traj['z_ie'][j] = B[j] + zeta * H_ie[j]
-            zetab = (traj['z_ie'][j-1]-B[j-1])/H_ie[j-1]
-            kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, j-1)
-            kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)
-            dage = (traj['x'][j]-traj['x'][j-1]) * np.sqrt(kappa*kappab)
-            traj['steady_age'][j] =traj['steady_age'][j-1]+dage
-            dgammaint = (traj['x'][j]-traj['x'][j-1]) * \
-                np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
-            gammaint = traj['gammaint'][j-1]+dgammaint
-            traj['gammaint'][j] = gammaint
-            i0 = traj['i0']
-            gamma = a[i0]*fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]*gammaint
-            tau = qq/Q[j] / (fct_domega_dzeta(zeta, j)*QH[j]/Q[j]/H_ie[j]) \
-                * (fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
-            traj['tau'][j] = tau
-            #FIXME: re-use kappa?
-            traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)*traj['a0']\
-                *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., i0)/(1+gamma) - a[j]/Q[j])
-            slope =traj_term* Y[j]*qq
-            melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
-            slope = (slope + melt_term) / QH[j] 
-            flow_term = -fct_domega_dx(zeta, j)
-            slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, j)
-            geom_term = - (1-zeta)*dHie_dx[j]
-            D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
-            slope = (slope + geom_term) / D 
-            slope = slope + dS_dx[j] #FIXME: add integral term of d(1/D)/dx
-            traj['slope'][j] = slope
-            if slope_diff:
-                zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][j-1]*traj['a0']
-                traj['zieb_iso'][j] = zieb_iso
-                ziea_iso = traj['z_ie'][j]+dage*tau*traj['a0']
-                if j == i0+1 and traj['in'] == 'surf':
-                    ziea_iso = S_ie[i0+1]
-                traj['ziea_iso'][j-1] = ziea_iso
-            if j == len(x)-1:
-                traj['out'] = 'downstream'
-            profs[j]['z_ie'].append( traj['z_ie'][j] )
-            profs[j]['steady_age'].append( traj['steady_age'][j] )
-            profs[j]['x0'].append( traj['x0'] )
-            profs[j]['a0'].append( traj['a0'] )
-            profs[j]['i0'].append( traj['i0'] )
-            profs[j]['tau'].append( traj['tau'][j] )
-            profs[j]['slope'].append( traj['slope'][j] )
-            if slope_diff:
-                profs[j]['zieb_iso'].append( traj['zieb_iso'][j] )
-                profs[j-1]['ziea_iso'].append( traj['ziea_iso'][j-1] )
-            if i0 in accu_starts[1:]:
-                profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
-        elif Q[j] < qq or traj['out'] == 'surf':
-            if traj['out'] != 'surf':
-                profs[j-1]['ziea_iso'].append( np.nan )
-            traj['z_ie'][j:] = np.nan
-            traj['steady_age'][j:] = np.nan
-            traj['gammaint'][j:] = np.nan
-            traj['tau'][j:] = np.nan
-            traj['slope'][j:] = np.nan
-            traj['out'] = 'surf'
-            if slope_diff:
-                traj['zieb_iso'][j:] = np.nan
-                traj['ziea_iso'][j-1:] = np.nan
-        elif Qm[j] > qq or traj['out'] == 'bed':
-            if traj['out'] != 'bed':
-                profs[j-1]['ziea_iso'].append( np.nan )
-            traj['z_ie'][j:] = np.nan
-            traj['steady_age'][j:] = np.nan
-            traj['gammaint'][j:] = np.nan
-            traj['tau'][j:] = np.nan
-            traj['slope'][j:] = np.nan
-            traj['out'] = 'bed'
-            if slope_diff:
-                traj['zieb_iso'][j:] = np.nan
-                traj['ziea_iso'][j-1:] = np.nan
-        j += 1
-    traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
-    traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
+rows = np.arange(ntraj)
+z_ie[rows, i0_arr] = [t['z_ie'][t['i0']] for t in trajs]
+steady_age[rows, i0_arr] = [t['steady_age'][t['i0']] for t in trajs]
+gammaint[rows, i0_arr] = [t['gammaint'][t['i0']] for t in trajs]
+tau[rows, i0_arr] = [t['tau'][t['i0']] for t in trajs]
+slope[rows, i0_arr] = [t['slope'][t['i0']] for t in trajs]
+surf_mask = in_arr == 'surf'
+sie_prev = np.where(i0_arr >= 1, i0_arr-1, len(x)-1)
+zieb_iso[rows[surf_mask], i0_arr[surf_mask]] = S_ie[sie_prev[surf_mask]]
+
+# Constantes par trajectoire (dépendent de l'origine i0)
+QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr]
+domega1_i0 = fct_domega_dzeta(1., i0_arr)          # vectorisé : passe un tableau en 2e argument
+c_gamma = a[i0_arr] * domega1_i0 * QH0/Q0/H0
+c_tr = QH0/Q0/H0 * domega1_i0
+
+with np.errstate(invalid='ignore', divide='ignore'):
+    for j in range(1, len(x)):
+        entered = i0_arr <= j-1
+        alive = entered & ~np.isnan(z_ie[:, j-1])
+        idx = rows[alive]
+        if idx.size == 0:
+            continue
+        qq = q_arr[idx]
+        surf_exit = Q[j] < qq
+        bed_exit = (Q[j] >= qq) & (Qm[j] > qq)
+        exits = surf_exit | bed_exit
+        if exits.any():
+            z_ie[idx[exits], j:] = np.nan
+            steady_age[idx[exits], j:] = np.nan
+            gammaint[idx[exits], j:] = np.nan
+            tau[idx[exits], j:] = np.nan
+            slope[idx[exits], j:] = np.nan
+            zieb_iso[idx[exits], j:] = np.nan
+            ziea_iso[idx[exits], j-1] = np.nan
+            idx = idx[~exits]
+            if idx.size == 0:
+                continue
+            qq = q_arr[idx]
+        omega = (qq-Qm[j])/(Q[j]-Qm[j])
+        zeta = np.interp(omega, tab_omega[:, j], zeta_grid)
+        z_ie[idx, j] = B[j] + zeta*H_ie[j]
+        zetab = (z_ie[idx, j-1]-B[j-1])/H_ie[j-1]
+        dom_dzeta = fct_domega_dzeta(zeta, j)
+        dom_dzeta_b = fct_domega_dzeta(zetab, j-1)
+        kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/dom_dzeta_b
+        kappa = Y[j]*H_ie[j]/QH[j]/dom_dzeta
+        dage = (x[j]-x[j-1]) * np.sqrt(kappa*kappab)
+        steady_age[idx, j] = steady_age[idx, j-1] + dage
+        gi_j = Y[j]/QH[j]**2*qq*H_ie[j]/dom_dzeta**3*fct_d2omega_dzeta2(zeta, j)
+        gi_jb = Y[j-1]/QH[j-1]**2*qq*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
+        gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
+        gamma = c_gamma[idx]*gammaint[idx, j]
+        tau_j = qq/Q[j] / (dom_dzeta*QH[j]/Q[j]/H_ie[j]) * c_tr[idx] / (1+gamma)
+        tau[idx, j] = tau_j
+        traj_term = (H_ie[j]/QH[j]/dom_dzeta*a0_arr[idx]*c_tr[idx]/(1+gamma) - a[j]/Q[j])
+        sl = traj_term*Y[j]*qq
+        melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
+        sl = (sl + melt_term)/QH[j]
+        sl = (sl - fct_domega_dx(zeta, j))*H_ie[j]/dom_dzeta
+        geom_term = -(1-zeta)*dHie_dx[j]
+        D = np.interp(z_ie[idx, j], D_depth_ie, D_D)
+        sl = (sl + geom_term)/D
+        sl = sl + dS_dx[j]
+        slope[idx, j] = sl
+        if slope_diff:
+            zieb_iso[idx, j] = z_ie[idx, j-1]-dage*tau[idx, j-1]*a0_arr[idx]
+            zia = z_ie[idx, j]+dage*tau_j*a0_arr[idx]
+            first = (j == i0_arr[idx]+1) & (in_arr[idx] == 'surf')
+            if first.any():
+                zia = np.where(first, S_ie[i0_arr[idx[first]]+1], zia)
+            ziea_iso[idx, j-1] = zia
+
+# --- Remplissage des dicts trajs (format identique à l'ancien code) ---
+z_all = S[None, :]-np.interp(S_ie[None, :]-z_ie, D_depth_ie, D_depth)
+age_all = np.interp(steady_age, steady_age_R, age_R)
+for t in range(ntraj):
+    tr = trajs[t]
+    tr['x'] = np.where(np.isnan(z_ie[t]), np.nan, x)   # x[j] rempli pour tout j visité
+    tr['z_ie'] = z_ie[t]
+    tr['steady_age'] = steady_age[t]
+    tr['gammaint'] = gammaint[t]
+    tr['tau'] = tau[t]
+    tr['slope'] = slope[t]
+    tr['zieb_iso'] = zieb_iso[t]
+    tr['ziea_iso'] = ziea_iso[t]
+    tr['z'] = z_all[t]
+    tr['age'] = age_all[t]
     if slope_diff:
-        # traj['ziea_iso'][len(x)-1] = np.nan
-        traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
-        traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
-        traj['za_iso'] = np.nan*np.ones_like(traj['z'])
-        traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
-        traj['slope_diff'] = np.nan*np.ones_like(traj['z'])
-        traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])
+        tr['ziea_iso'][-1] = np.nan
+        tr['zb_iso'] = np.nan*np.ones_like(tr['z'])
+        tr['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-tr['zieb_iso'][1:], D_depth_ie, D_depth)
+        tr['za_iso'] = np.nan*np.ones_like(tr['z'])
+        tr['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-tr['ziea_iso'][:-1], D_depth_ie, D_depth)
+        tr['slope_diff'] = np.nan*np.ones_like(tr['z'])
+        tr['slope_diff'][1:-1] = (tr['za_iso'][1:-1]-tr['zb_iso'][1:-1])/(x[2:]-x[:-2])
+
+# --- Reconstruction des profs (même contenu/ordre que l'ancien code) ---
+advanced = np.zeros((ntraj, len(x)), dtype=bool)
+for j in range(1, len(x)):
+    advanced[:, j] = (i0_arr <= j-1) & ~np.isnan(z_ie[:, j-1]) & ~np.isnan(z_ie[:, j])
+is_unconf = np.isin(i0_arr, accu_starts[1:]) if len(accu_starts) > 1 else np.zeros(ntraj, dtype=bool)
+
+for k in range(len(x)):
+    sel = (i0_arr == k) | advanced[:, k]
+    profs[k]['z_ie'] = z_ie[sel, k].copy()
+    profs[k]['steady_age'] = steady_age[sel, k].copy()
+    profs[k]['tau'] = tau[sel, k].copy()
+    profs[k]['slope'] = slope[sel, k].copy()
+    profs[k]['x0'] = x0_arr[sel].copy()
+    profs[k]['a0'] = a0_arr[sel].copy()
+    profs[k]['i0'] = i0_arr[sel].copy()
+    if slope_diff:
+        profs[k]['zieb_iso'] = zieb_iso[sel, k].copy()
+    if k <= len(x)-2:
+        adv_k = advanced[:, k+1]
+        alive_k = (i0_arr <= k) & ~np.isnan(z_ie[:, k])
+        contrib = adv_k | (alive_k & ~adv_k)
+        vals = ziea_iso[contrib, k].copy()
+        vals[alive_k[contrib] & ~adv_k[contrib]] = np.nan
+        profs[k]['ziea_iso'] = vals
+    else:
+        profs[k]['ziea_iso'] = np.array([])
+    if len(accu_starts) > 1:
+        adv_sel = advanced[:, k] & is_unconf
+        if adv_sel.any():
+            ranks = np.cumsum(sel) - 1
+            profs[k]['unconf'] = ranks[adv_sel].tolist()
+
+# # ------------------------------
+# # Following of trajectories
+# # ------------------------------
+
+# for traj in trajs:
+#     i0 = traj['i0']
+#     qq = traj['q']
+
+#     profs[i0]['z_ie'].append( traj['z_ie'][i0] )
+#     profs[i0]['steady_age'].append( traj['steady_age'][i0] )
+#     profs[i0]['tau'].append( traj['tau'][i0] )
+#     profs[i0]['slope'].append( traj['slope'][i0] )
+#     profs[i0]['x0'].append( traj['x0'] )
+#     profs[i0]['a0'].append( traj['a0'] )
+#     profs[i0]['i0'].append( traj['i0'] )
+#     if slope_diff:
+#         profs[i0]['zieb_iso'].append( traj['zieb_iso'][i0] )
+
+#     j = i0 + 1
+#     while j < len(x) and traj['out'] == None:
+#         traj['x'][j] = x[j]
+#         if Q[j] >= qq and Qm[j] <= qq: 
+#             omega = (qq-Qm[j])/(Q[j]-Qm[j])
+#             zeta = fct_zeta(omega, j)
+#             traj['z_ie'][j] = B[j] + zeta * H_ie[j]
+#             zetab = (traj['z_ie'][j-1]-B[j-1])/H_ie[j-1]
+#             kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/fct_domega_dzeta(zetab, j-1)
+#             kappa = Y[j]*H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)
+#             dage = (traj['x'][j]-traj['x'][j-1]) * np.sqrt(kappa*kappab)
+#             traj['steady_age'][j] =traj['steady_age'][j-1]+dage
+#             dgammaint = (traj['x'][j]-traj['x'][j-1]) * \
+#                 np.sqrt(fct_gamma_int(j, qq, zeta) * fct_gamma_int(j-1, qq, zetab))
+#             gammaint = traj['gammaint'][j-1]+dgammaint
+#             traj['gammaint'][j] = gammaint
+#             i0 = traj['i0']
+#             gamma = a[i0]*fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]*gammaint
+#             tau = qq/Q[j] / (fct_domega_dzeta(zeta, j)*QH[j]/Q[j]/H_ie[j]) \
+#                 * (fct_domega_dzeta(1, i0)*QH[i0]/Q[i0]/H_ie[i0]) / (1+gamma)
+#             traj['tau'][j] = tau
+#             #FIXME: re-use kappa?
+#             traj_term = (H_ie[j]/QH[j]/fct_domega_dzeta(zeta, j)*traj['a0']\
+#                 *QH[i0]/Q[i0]/H_ie[i0]*fct_domega_dzeta(1., i0)/(1+gamma) - a[j]/Q[j])
+#             slope =traj_term* Y[j]*qq
+#             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
+#             slope = (slope + melt_term) / QH[j] 
+#             flow_term = -fct_domega_dx(zeta, j)
+#             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, j)
+#             geom_term = - (1-zeta)*dHie_dx[j]
+#             D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
+#             slope = (slope + geom_term) / D 
+#             slope = slope + dS_dx[j] #FIXME: add integral term of d(1/D)/dx
+#             traj['slope'][j] = slope
+#             if slope_diff:
+#                 zieb_iso = traj['z_ie'][j-1]-dage*traj['tau'][j-1]*traj['a0']
+#                 traj['zieb_iso'][j] = zieb_iso
+#                 ziea_iso = traj['z_ie'][j]+dage*tau*traj['a0']
+#                 if j == i0+1 and traj['in'] == 'surf':
+#                     ziea_iso = S_ie[i0+1]
+#                 traj['ziea_iso'][j-1] = ziea_iso
+#             if j == len(x)-1:
+#                 traj['out'] = 'downstream'
+#             profs[j]['z_ie'].append( traj['z_ie'][j] )
+#             profs[j]['steady_age'].append( traj['steady_age'][j] )
+#             profs[j]['x0'].append( traj['x0'] )
+#             profs[j]['a0'].append( traj['a0'] )
+#             profs[j]['i0'].append( traj['i0'] )
+#             profs[j]['tau'].append( traj['tau'][j] )
+#             profs[j]['slope'].append( traj['slope'][j] )
+#             if slope_diff:
+#                 profs[j]['zieb_iso'].append( traj['zieb_iso'][j] )
+#                 profs[j-1]['ziea_iso'].append( traj['ziea_iso'][j-1] )
+#             if i0 in accu_starts[1:]:
+#                 profs[j]['unconf'].append(len(profs[j]['z_ie'])-1)
+#         elif Q[j] < qq or traj['out'] == 'surf':
+#             if traj['out'] != 'surf':
+#                 profs[j-1]['ziea_iso'].append( np.nan )
+#             traj['z_ie'][j:] = np.nan
+#             traj['steady_age'][j:] = np.nan
+#             traj['gammaint'][j:] = np.nan
+#             traj['tau'][j:] = np.nan
+#             traj['slope'][j:] = np.nan
+#             traj['out'] = 'surf'
+#             if slope_diff:
+#                 traj['zieb_iso'][j:] = np.nan
+#                 traj['ziea_iso'][j-1:] = np.nan
+#         elif Qm[j] > qq or traj['out'] == 'bed':
+#             if traj['out'] != 'bed':
+#                 profs[j-1]['ziea_iso'].append( np.nan )
+#             traj['z_ie'][j:] = np.nan
+#             traj['steady_age'][j:] = np.nan
+#             traj['gammaint'][j:] = np.nan
+#             traj['tau'][j:] = np.nan
+#             traj['slope'][j:] = np.nan
+#             traj['out'] = 'bed'
+#             if slope_diff:
+#                 traj['zieb_iso'][j:] = np.nan
+#                 traj['ziea_iso'][j-1:] = np.nan
+#         j += 1
+#     traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
+#     traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
+#     if slope_diff:
+#         # traj['ziea_iso'][len(x)-1] = np.nan
+#         traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
+#         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
+#         traj['za_iso'] = np.nan*np.ones_like(traj['z'])
+#         traj['za_iso'][:-1] = S[1:]-np.interp(S_ie[1:]-traj['ziea_iso'][:-1], D_depth_ie, D_depth)
+#         traj['slope_diff'] = np.nan*np.ones_like(traj['z'])
+#         traj['slope_diff'][1:-1] = (traj['za_iso'][1:-1]-traj['zb_iso'][1:-1])/(x[2:]-x[:-2])
 
 
 for i in range(len(x)-1): #FIXME: why -1?
