@@ -399,6 +399,7 @@ tab_omega = np.ones((nb_zeta, len(x)))*np.nan
 for i in range(len(x)):
     tab_omega[:, i] = fct_omega(zeta_grid, i)
 
+print('Before initialisation of trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ------------------------------
 # Initialisation of trajectories (vectorisée)
@@ -463,6 +464,8 @@ domega1_i0 = fct_domega_dzeta(1., i0_arr)
 c_gamma = a[i0_arr] * domega1_i0 * QH0/Q0/H0
 c_tr = QH0/Q0/H0 * domega1_i0
 
+print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
+
 # ------------------------------
 # Suivi des trajectoires, batch par colonne
 # ------------------------------
@@ -522,6 +525,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
             if first.any():
                 zia = np.where(first, S_ie[i0_arr[idx[first]]+1], zia)
             ziea_iso[idx, j-1] = zia
+
+print('After following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ------------------------------
 # Champs dérivés 2D
@@ -593,6 +598,8 @@ def prof_col(ii):
             pc['cp_iso_depth'][j] = np.interp(x[ii], cp_iso_x, cp_iso_depth[j, :])
             pc['cp_iso_z'][j] = np.interp(x[ii]/1000., cp_iso_x, cp_iso_z[j, :])
     return pc
+
+print('Before surface quantities:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ----------------------------------------
 # Quantités de surface
