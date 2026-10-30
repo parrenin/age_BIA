@@ -77,6 +77,7 @@ output_fl = False
 slope_diff = False
 x_grid = {}
 fig_slope_maxrange = None
+nb_zeta = 1001
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -160,18 +161,7 @@ def fct_domega_ds(zeta, i):
     return zeta - fct_omegaD(zeta, i)
 
 def fct_zeta(omega, i):
-    # Définir la fonction dont on cherche la racine
-    def equation(zeta):
-        return fct_omega(zeta, i) - omega
-    def derivative(zeta):
-        return fct_domega_dzeta(zeta, i)
-
-    # Résoudre numériquement
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        zeta_solution = fsolve(equation, omega, fprime=derivative, xtol=1e-6,
-                               factor=1)  # omega is an initial value
-    return zeta_solution[0]
+    return np.interp(omega, tab_omega[:, i], zeta_grid)
 
 def integrand(zeta, i):
     """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
@@ -400,6 +390,16 @@ dp_dx = d_dx(p)
 ds_dx = d_dx(s)
 dS_dx = d_dx(S)
 dHie_dx = d_dx(H_ie)
+
+# --------------------------------------
+# Calculation of tab_omega
+# --------------------------------------
+
+zeta_grid = np.linspace(0, 1, nb_zeta)
+tab_omega = np.ones((nb_zeta, len(x)))*np.nan
+for i in range(len(x)):
+    tab_omega[:, i] = fct_omega(zeta_grid, i)
+
 
 # --------------------------------------
 # Initialisation of trajectories
