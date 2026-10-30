@@ -23,7 +23,6 @@ Ceci est un script temporaire.
 import sys
 import numpy as np
 from scipy.integrate import quad
-from scipy.interpolate import interp1d
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -602,23 +601,34 @@ def prof_col(ii):
 print('Before surface quantities:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ----------------------------------------
-# Quantités de surface
+# Quantités de surface (vectorisé)
 # ----------------------------------------
-surf_steady_age = np.zeros_like(x)
-surf_tau = np.zeros_like(x)
-surf_slope = np.zeros_like(x)
-for i in range(len(x)):
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            pc = prof_col(i)
-            surf_steady_age[i] = interp1d(pc['z'], pc['steady_age'], kind='linear', fill_value="extrapolate")(S[i])
-            surf_tau[i] = interp1d(pc['z'], pc['tau'], kind='linear', fill_value="extrapolate")(S[i])
-            surf_slope[i] = interp1d(pc['z'], pc['slope'], kind='linear', fill_value="extrapolate")(S[i])
-    except:
-        surf_steady_age[i] = np.nan
-        surf_tau[i] = np.nan
-        surf_slope[i] = np.nan
+
+alive = ~np.isnan(z_ie)
+ntraj_, nx_ = z_ie.shape
+cols = np.arange(nx_)
+
+# Deux trajectoires les plus hautes par colonne (dernières vivantes)
+top  = ntraj_-1 - np.argmax(alive[::-1, :], axis=0)
+alive2 = alive.copy()
+alive2[top, cols] = False
+top2 = ntraj_-1 - np.argmax(alive2[::-1, :], axis=0)
+ok = alive.any(axis=0) & alive2.any(axis=0)   # >= 2 trajs dans la colonne
+
+z1, z2 = Zmat[top, cols], Zmat[top2, cols]
+dz = z1 - z2
+ok &= dz != 0
+
+with np.errstate(divide='ignore', invalid='ignore'):
+    tfrac = np.where(ok, (S - z1)/np.where(dz == 0., 1., dz), 0.)
+    def surf_extrap(Y):
+        y1, y2 = Y[top, cols], Y[top2, cols]
+        return np.where(ok, y1 + tfrac*(y1-y2), np.nan)
+
+surf_steady_age = surf_extrap(steady_age)
+surf_tau        = surf_extrap(tau)
+surf_slope      = surf_extrap(slope)
+
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 
 print('Before creating figures:', round(time.perf_counter()-START_TIME, 4), 's.')
