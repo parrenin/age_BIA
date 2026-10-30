@@ -22,7 +22,6 @@ Ceci est un script temporaire.
 
 import sys
 import numpy as np
-from scipy.integrate import quad
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -160,20 +159,6 @@ def fct_domega_dx(zeta, i):
 
 def fct_zeta(omega, i):
     return np.interp(omega, tab_omega[:, i], zeta_grid)
-
-def integrand(zeta, i):
-    """Intégrande : H / (a * (omega(zeta) + mu) / (1 + mu)) = H*(1+mu) / (a*(omega(zeta) + mu))"""
-    mu = Qm[i] / QH[i]
-    return (H[i] * (1 + mu)) / (a[i] * (fct_omega(zeta, i) + mu))
-
-def integrate_age(zeta_min, zeta_max, i):
-    """Intègre l'intégrande entre zeta_min et zeta_max."""
-    result, _ = quad(
-        lambda z: integrand(z, i),
-        zeta_min,
-        zeta_max
-    )
-    return result
 
 def fct_gamma_int(j, qq, zeta):
     return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, j)**3 \
@@ -400,6 +385,15 @@ for i in range(len(x)):
 
 print('Before initialisation of trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
+# ----------------------------------------
+# Calculating upstream age 
+# ----------------------------------------
+
+# Primitive par trapèzes de l'intégrande d'âge, colonne amont uniquement
+mu0 = Qm[0]/QH[0]
+f0 = H_ie[0]*(1+mu0)/(a[0]*(tab_omega[:, 0]+mu0))
+C0 = np.concatenate(([0.], np.cumsum(0.5*(f0[1:]+f0[:-1])*np.diff(zeta_grid))))
+
 # ------------------------------
 # Initialisation of trajectories (vectorisée)
 # ------------------------------
@@ -417,7 +411,7 @@ if Q[0] > 0:
         omega = fct_omega(zeta, 0)
         qq = Qm[0] + (Q[0]-Qm[0])*omega
         gi0 = H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(zeta, 0)-1/fct_domega_dzeta(1., 0))
-        age0 = np.array([integrate_age(z, 1., 0) for z in zeta])
+        age0 = C0[-1] - np.interp(zeta, zeta_grid, C0)
         nup = z_arr.size
         i0_l += [0]*nup; q_l += list(qq); a0_l += [a[0]]*nup; x0_l += [x[0]]*nup
         in_l += ['upstream']*nup; z0_l += list(z_arr)
