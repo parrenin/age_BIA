@@ -75,6 +75,8 @@ slope_diff = False
 x_grid = {}
 fig_slope_maxrange = None
 nb_zeta = 1001
+solid_fraction_profiles = None
+dzie_D = 1.0
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -231,23 +233,34 @@ else:
     steady_age_R = age_R
     R = np.array([1, 1])
 
-# ----------------------------------------------------------------
-# Loading data from solid_fraction.txt
-# ----------------------------------------------------------------
 
-if solid_fraction != None:
-    D_depth, D_D = np.loadtxt(datadir+solid_fraction, unpack=True)
-    D_depth = np.append(D_depth, D_depth[-1]+0.01)
-    D_depth = np.append(D_depth, 10000)
-    D_D = np.append(D_D, 1)
-    D_D = np.append(D_D, 1)
+# -----------------------------------------------------------------
+# Loading solid fraction profiles
+# -----------------------------------------------------------------
 
-    D_depth_ie = np.cumsum(np.concatenate((np.array([0]),
-                                       D_D[:-1] * (D_depth[1:]-D_depth[:-1]))))
+def read_sf_profile(fname):
+    Dd, DD = np.loadtxt(datadir+fname, unpack=True)
+    Dd = np.append(Dd, Dd[-1]+0.01)
+    Dd = np.append(Dd, 10000.)
+    DD = np.append(DD, 1.)
+    DD = np.append(DD, 1.)
+    Die = np.cumsum(np.concatenate((np.array([0.]), DD[:-1]*(Dd[1:]-Dd[:-1]))))
+    return Dd, DD, Die
+
+sf_anchors = []   # (x_km, D_depth, D_D, D_depth_ie)
+if solid_fraction_profiles is not None:
+    xs_check = np.array([float(e['x']) for e in solid_fraction_profiles])
+    if np.any(np.diff(xs_check) <= 0):
+        raise ValueError('solid_fraction_profiles must be sorted by increasing x: '
+                         + str(list(xs_check)))
+    for e in solid_fraction_profiles:
+        Dd, DD, Die = read_sf_profile(e['file'])
+        sf_anchors.append((float(e['x']), Dd, DD, Die))
+elif solid_fraction is not None:
+    Dd, DD, Die = read_sf_profile(solid_fraction)
+    sf_anchors.append((-np.inf, Dd, DD, Die))
 else:
-    D_depth_ie = np.array([0, 10000])
-    D_depth = D_depth_ie
-    D_D = np.ones_like((D_depth_ie))
+    sf_anchors.append((-np.inf, np.array([0., 10000.]), np.ones(2), np.array([0., 10000.])))
 
 # -----------------------------------------------------------
 # Reading of comparison files for ice cores
@@ -332,10 +345,43 @@ QH = Q - Qm
 # DELTA H, H_ie and S_ie
 # ----------------------------------------------------------
 
-DELTA_H = D_depth[-1] - D_depth_ie[-1]
-print('DELTA_H:', DELTA_H)
+xs_a = np.array([a[0] for a in sf_anchors])
+dH_a = np.array([a[1][-1]-a[3][-1] for a in sf_anchors])
+if len(sf_anchors) == 1:
+    DELTA_H = np.full_like(x, dH_a[0])
+else:
+    DELTA_H = np.interp(x/1000., xs_a, dH_a)
+print('DELTA_H: %.3f (x=0 km) .. %.3f (x=%.1f km)' % (DELTA_H[0], DELTA_H[-1], x[-1]/1000.))
 S_ie = S - DELTA_H
 H_ie = H - DELTA_H
+
+# Grille commune de profondeur équivalent-glace (pas dzie_D)
+v_max = 1.5*np.max(H_ie)
+nv = max(int(np.ceil(v_max/dzie_D))+1, 2)
+v_grid = np.linspace(0., v_max, nv)
+nanc = len(sf_anchors)
+Dprof = np.empty((nanc, nv)); Rprof = np.empty((nanc, nv))
+for k in range(nanc):
+    Dd, DD, Die = sf_anchors[k][1], sf_anchors[k][2], sf_anchors[k][3]
+    Dprof[k] = np.interp(v_grid, Die, DD)
+    Rprof[k] = np.interp(v_grid, Die, Dd)
+if nanc == 1:
+    D_col = np.tile(Dprof[0], (len(x), 1))
+    R_col = np.tile(Rprof[0], (len(x), 1))
+else:
+    D_col = np.empty((len(x), nv)); R_col = np.empty((len(x), nv))
+    for iv in range(nv):
+        D_col[:, iv] = np.interp(x/1000., xs_a, Dprof[:, iv])
+        R_col[:, iv] = np.interp(x/1000., xs_a, Rprof[:, iv])
+
+# Terme intégral de d(1/D)/dx (variation du profil de densité, pour la pente)
+G = 1./D_col
+Gx = np.zeros_like(G)
+Gx[1:-1] = (G[2:]-G[:-2])/(x[2:]-x[:-2])[:, None]
+Gx[0] = (G[1]-G[0])/(x[1]-x[0])
+Gx[-1] = (G[-1]-G[-2])/(x[-1]-x[-2])
+TIE = np.zeros_like(G)
+TIE[:, 1:] = np.cumsum(0.5*(Gx[:, 1:]+Gx[:, :-1])*np.diff(v_grid)[None, :], axis=1)
 
 # ----------------------------------------
 # Calculation of surface velocity
@@ -507,8 +553,10 @@ with np.errstate(invalid='ignore', divide='ignore'):
         sl = (sl + melt_term)/QH[j]
         sl = (sl - fct_domega_dx(zeta, j))*H_ie[j]/dom_dzeta
         geom_term = -(1-zeta)*dHie_dx[j]
-        D = np.interp(z_ie[idx, j], D_depth_ie, D_D)
+        u_dep = S_ie[j] - z_ie[idx, j]        # profondeur ie sous S_ie
+        D = np.interp(u_dep, v_grid, D_col[j])
         sl = (sl + geom_term)/D
+        sl = sl - np.interp(u_dep, v_grid, TIE[j])   # terme ∫ d(1/D)/dx
         sl = sl + dS_dx[j]
         slope[idx, j] = sl
         if slope_diff:
@@ -524,18 +572,20 @@ print('After following trajectories:', round(time.perf_counter()-START_TIME, 4),
 # ------------------------------
 # Champs dérivés 2D
 # ------------------------------
-Zmat = S[None, :] - np.interp((S_ie[None, :]-z_ie).ravel(),
-                               D_depth_ie, D_depth).reshape(z_ie.shape)
+Zmat = np.full_like(z_ie, np.nan)
+for j in range(len(x)):
+    Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
 Xmat = np.where(np.isnan(z_ie), np.nan, x)[...]   # voir note ci-dessous
 if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
-    ZBmat[:, 1:] = S[None, :-1]-np.interp((S_ie[None, :-1]-zieb_iso[:, 1:]).ravel(),
-                                          D_depth_ie, D_depth).reshape(ntraj, len(x)-1)
     ZAmat = np.full((ntraj, len(x)), np.nan)
-    ZAmat[:, :-1] = S[None, 1:]-np.interp((S_ie[None, 1:]-ziea_iso[:, :-1]).ravel(),
-                                          D_depth_ie, D_depth).reshape(ntraj, len(x)-1)
+    for j in range(len(x)):
+        if j >= 1:
+            ZBmat[:, j] = S[j-1] - np.interp(S_ie[j-1] - zieb_iso[:, j], v_grid, R_col[j-1])
+        if j <= len(x)-2:
+            ZAmat[:, j] = S[j+1] - np.interp(S_ie[j+1] - ziea_iso[:, j], v_grid, R_col[j+1])
     SDmat = np.full((ntraj, len(x)), np.nan)
     SDmat[:, 1:-1] = (ZAmat[:, 1:-1]-ZBmat[:, 1:-1])/(x[2:]-x[:-2])[None, :]
 
@@ -570,14 +620,14 @@ def prof_col(ii):
         else:
             pc['ziea_iso'] = np.array([])
         if ii >= 1:
-            pc['zb_iso'] = S[ii-1]-np.interp(S_ie[ii-1]-pc['zieb_iso'], D_depth_ie, D_depth)
-            pc['za_iso'] = S[ii+1]-np.interp(S_ie[ii+1]-pc['ziea_iso'], D_depth_ie, D_depth)
+            pc['zb_iso'] = S[ii-1]-np.interp(S_ie[ii-1]-pc['zieb_iso'], v_grid, R_col[ii-1])
+            pc['za_iso'] = S[ii+1]-np.interp(S_ie[ii+1]-pc['ziea_iso'], v_grid, R_col[ii+1])
             pc['slope_diff'] = (pc['za_iso']-pc['zb_iso'])/(x[ii+1]-x[ii-1])
         else:
             pc['zb_iso'] = np.nan*np.ones_like(pc['z'])
             pc['za_iso'] = np.nan*np.ones_like(pc['z'])
             pc['slope_diff'] = np.nan*np.ones_like(pc['z'])
-    pc['z'] = S[ii]-np.interp(S_ie[ii]-pc['z_ie'], D_depth_ie, D_depth)
+    pc['z'] = S[ii]-np.interp(S_ie[ii]-pc['z_ie'], v_grid, R_col[ii])
     pc['age'] = np.interp(pc['steady_age'], steady_age_R, age_R)
     if len(accu_starts) > 1:
         adv_sel = advanced[:, ii] & is_unconf
