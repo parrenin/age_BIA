@@ -488,9 +488,9 @@ for traj in trajs:
         profs[i0]['zieb_iso'].append( traj['zieb_iso'][i0] )
 
     j = i0 + 1
-    while j < len(x) :
+    while j < len(x) and traj['out'] == None:
         traj['x'][j] = x[j]
-        if Q[j] >= qq and Qm[j] <= qq and traj['out'] == None: 
+        if Q[j] >= qq and Qm[j] <= qq: 
             omega = (qq-Qm[j])/(Q[j]-Qm[j])
             zeta = fct_zeta(omega, j)
             traj['z_ie'][j] = B[j] + zeta * H_ie[j]
@@ -545,32 +545,32 @@ for traj in trajs:
         elif Q[j] < qq or traj['out'] == 'surf':
             if traj['out'] != 'surf':
                 profs[j-1]['ziea_iso'].append( np.nan )
-            traj['z_ie'][j] = np.nan
-            traj['steady_age'][j] = np.nan
-            traj['gammaint'][j] = np.nan
-            traj['tau'][j] = np.nan
-            traj['slope'][j] = np.nan
+            traj['z_ie'][j:] = np.nan
+            traj['steady_age'][j:] = np.nan
+            traj['gammaint'][j:] = np.nan
+            traj['tau'][j:] = np.nan
+            traj['slope'][j:] = np.nan
             traj['out'] = 'surf'
             if slope_diff:
-                traj['zieb_iso'][j] = np.nan
-                traj['ziea_iso'][j-1] = np.nan
+                traj['zieb_iso'][j:] = np.nan
+                traj['ziea_iso'][j-1:] = np.nan
         elif Qm[j] > qq or traj['out'] == 'bed':
             if traj['out'] != 'bed':
                 profs[j-1]['ziea_iso'].append( np.nan )
-            traj['z_ie'][j] = np.nan
-            traj['steady_age'][j] = np.nan
-            traj['gammaint'][j] = np.nan
-            traj['tau'][j] = np.nan
-            traj['slope'][j] = np.nan
+            traj['z_ie'][j:] = np.nan
+            traj['steady_age'][j:] = np.nan
+            traj['gammaint'][j:] = np.nan
+            traj['tau'][j:] = np.nan
+            traj['slope'][j:] = np.nan
             traj['out'] = 'bed'
             if slope_diff:
-                traj['zieb_iso'][j] = np.nan
-                traj['ziea_iso'][j-1] = np.nan
+                traj['zieb_iso'][j:] = np.nan
+                traj['ziea_iso'][j-1:] = np.nan
         j += 1
     traj['z'] = S-np.interp(S_ie-traj['z_ie'], D_depth_ie, D_depth)
     traj['age'] = np.interp(traj['steady_age'], steady_age_R, age_R)
     if slope_diff:
-        traj['ziea_iso'][len(x)-1] = np.nan
+        # traj['ziea_iso'][len(x)-1] = np.nan
         traj['zb_iso'] = np.nan*np.ones_like(traj['z'])
         traj['zb_iso'][1:] = S[:-1]-np.interp(S_ie[:-1]-traj['zieb_iso'][1:], D_depth_ie, D_depth)
         traj['za_iso'] = np.nan*np.ones_like(traj['z'])
