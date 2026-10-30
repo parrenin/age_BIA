@@ -160,6 +160,9 @@ def fct_domega_dp(zeta, i):
 def fct_domega_ds(zeta, i):
     return zeta - fct_omegaD(zeta, i)
 
+def fct_domega_dx(zeta, i):
+    return fct_domega_dp(zeta, i)*dp_dx[i] + fct_domega_ds(zeta, i)*ds_dx[i]
+
 def fct_zeta(omega, i):
     return np.interp(omega, tab_omega[:, i], zeta_grid)
 
@@ -511,8 +514,7 @@ for traj in trajs:
             slope =traj_term* Y[j]*qq
             melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
             slope = (slope + melt_term) / QH[j] 
-            flow_term = -fct_domega_dp(zeta, j)*dp_dx[j] \
-                -fct_domega_ds(zeta, j)*ds_dx[j]
+            flow_term = -fct_domega_dx(zeta, j)
             slope = (slope + flow_term) * H_ie[j] / fct_domega_dzeta(zeta, j)
             geom_term = - (1-zeta)*dHie_dx[j]
             D = np.interp(traj['z_ie'][j], D_depth_ie, D_D)
