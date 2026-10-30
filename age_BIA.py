@@ -22,7 +22,6 @@ Ceci est un script temporaire.
 
 import sys
 import numpy as np
-from scipy.optimize import fsolve
 from scipy.integrate import quad
 from scipy.interpolate import interp1d
 import yaml
@@ -148,10 +147,7 @@ def fct_d2omega_dzeta2(zeta, i):
 def fct_domegaD_dp(zeta, i):
     term1 = (1-zeta)/(p[i]+1)**2
     term2 = -(1-zeta)**(p[i]+2)/(p[i]+1)**2
-    if zeta < 1:
-        term3 = (1-zeta)**(p[i]+2)*math.log(1-zeta)/(p[i]+1)
-    else:
-        term3 = 0.
+    term3 = np.where(zeta < 1, (1-zeta)**(p[i]+2)*np.log(np.maximum(1-zeta, 1e-300))/(p[i]+1), 0.)
     return term1 + term2 + term3
 
 def fct_domega_dp(zeta, i):
