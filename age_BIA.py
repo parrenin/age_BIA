@@ -957,6 +957,12 @@ print('After slope figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 for name in ic:
     ii = np.argmin(np.abs(x/1000. - ic[name]['x']))
     pc = prof_col(ii)
+    # Mask values beyond max_depth, so that figure auto-scale correctly
+    zmin = S[ii] - ic[name]['max_depth']
+    visible = pc['z'] >= zmin
+    def in_window(yv):
+        return np.where(visible, yv, np.nan)
+
 
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.title(name + ' ice core', fontsize=20)
@@ -1013,9 +1019,9 @@ for name in ic:
     ax4 = ax.twiny()
     for i in range(len(prof_domains)-1):
         if slope_diff:
-            ax4.plot(pc['slope_diff'][prof_domains[i]:prof_domains[i+1]],
+            ax4.plot(in_window(pc['slope_diff'])[prof_domains[i]:prof_domains[i+1]],
                      pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet', linestyle='dotted')
-        ax4.plot(pc['slope'][prof_domains[i]:prof_domains[i+1]],
+        ax4.plot(in_window(pc['slope'])[prof_domains[i]:prof_domains[i+1]],
                  pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
     if ic[name]['comp'] is not None:
         ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
