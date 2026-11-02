@@ -10,10 +10,7 @@ Ceci est un script temporaire.
 # TDO: use panda for inputs
 # TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
-# TODO: can we interpolate age/origin/etc. on the grid?
 # TODO: Output for isochrones
-# TODO: Remove 'a0' and 'x0' from trajs and profs since we have 'i0' now
-# TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Implement varying z grid as well
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
 
@@ -436,9 +433,10 @@ print('Before initialisation of trajectories:', round(time.perf_counter()-START_
 # ----------------------------------------
 
 # Trapezoidal integration of the age on the upstream boundary
-mu0 = Qm[0]/QH[0]
-f0 = H_ie[0]*(1+mu0)/(a[0]*(tab_omega[:, 0]+mu0))
-C0 = np.concatenate(([0.], np.cumsum(0.5*(f0[1:]+f0[:-1])*np.diff(zeta_grid))))
+if Q[0] > 0: 
+    mu0 = Qm[0]/QH[0]
+    f0 = H_ie[0]*(1+mu0)/(a[0]*(tab_omega[:, 0]+mu0))
+    C0 = np.concatenate(([0.], np.cumsum(0.5*(f0[1:]+f0[:-1])*np.diff(zeta_grid))))
 
 # --------------------------------------------
 # Initialisation of trajectories (vectorized)
