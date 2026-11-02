@@ -11,7 +11,6 @@ Ceci est un script temporaire.
 # TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
 # TODO: Output for isochrones
-# TODO: Implement varying z grid as well
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
 
 import sys
@@ -63,6 +62,7 @@ solid_fraction = None
 output_fl = False
 slope_diff = False
 x_grid = {}
+z_grid = {}
 fig_slope_maxrange = None
 nb_zeta = 1001
 solid_fraction_profiles = None
@@ -338,6 +338,8 @@ else:
 QH = Q - Qm
 
 
+print('Before firn correction calculations:', round(time.perf_counter()-START_TIME, 4), 's.')
+
 # ----------------------------------------------------------
 # DELTA H, H_ie and S_ie
 # ----------------------------------------------------------
@@ -352,7 +354,7 @@ print('DELTA_H: %.3f (x=0 km) .. %.3f (x=%.1f km)' % (DELTA_H[0], DELTA_H[-1], x
 S_ie = S - DELTA_H
 H_ie = H - DELTA_H
 
-# Grille commune de profondeur équivalent-glace (pas dzie_D)
+# Common grid for ice equivalent depth (dzie_D step)
 v_max = 1.5*np.max(H_ie)
 nv = max(int(np.ceil(v_max/dzie_D))+1, 2)
 v_grid = np.linspace(0., v_max, nv)
@@ -379,6 +381,10 @@ Gx[0] = (G[1]-G[0])/(x[1]-x[0])
 Gx[-1] = (G[-1]-G[-2])/(x[-1]-x[-2])
 TIE = np.zeros_like(G)
 TIE[:, 1:] = np.cumsum(0.5*(Gx[:, 1:]+Gx[:, :-1])*np.diff(v_grid)[None, :], axis=1)
+
+
+print('After firn correction calculations:', round(time.perf_counter()-START_TIME, 4), 's.')
+
 
 # ----------------------------------------
 # Calculation of surface velocity
@@ -448,14 +454,14 @@ in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], [
 
 # From the upstream border
 if Q[0] > 0:
-    zz_start = B[0] + ((S_ie[0]-B[0]) % z_step)
-    z_arr = np.arange(zz_start, S_ie[0], z_step)
+    zg = grid({**z_grid, 'start': 0., 'end': 1.})
+    zeta_arr = zg[(zg < 1.) & (zg > 0.)]
+    z_arr = B[0] + zeta_arr*H_ie[0] 
     if z_arr.size:
-        zeta = (z_arr-B[0])/H_ie[0]
-        omega = fct_omega(zeta, 0)
+        omega = fct_omega(zeta_arr, 0)
         qq = Qm[0] + (Q[0]-Qm[0])*omega
-        gi0 = H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(zeta, 0)-1/fct_domega_dzeta(1., 0))
-        age0 = C0[-1] - np.interp(zeta, zeta_grid, C0)
+        gi0 = H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(zeta_arr, 0)-1/fct_domega_dzeta(1., 0))
+        age0 = C0[-1] - np.interp(zeta_arr, zeta_grid, C0)
         nup = z_arr.size
         i0_l += [0]*nup; q_l += list(qq);
         in_l += ['upstream']*nup; z0_l += list(z_arr)

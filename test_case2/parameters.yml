@@ -3,7 +3,6 @@ x_grid: #depth grid for the age calculation
     start: 0.
     end: 50.
     nb_steps: 500
-z_step: 50.
 Q_left: 0.
 Qm_left: 0.
 x_start: 1.
