@@ -431,20 +431,20 @@ print('Before initialisation of trajectories:', round(time.perf_counter()-START_
 # Calculating upstream age 
 # ----------------------------------------
 
-# Primitive par trapèzes de l'intégrande d'âge, colonne amont uniquement
+# Trapezoidal integration of the age on the upstream boundary
 mu0 = Qm[0]/QH[0]
 f0 = H_ie[0]*(1+mu0)/(a[0]*(tab_omega[:, 0]+mu0))
 C0 = np.concatenate(([0.], np.cumsum(0.5*(f0[1:]+f0[:-1])*np.diff(zeta_grid))))
 
-# ------------------------------
-# Initialisation of trajectories (vectorisée)
-# ------------------------------
+# --------------------------------------------
+# Initialisation of trajectories (vectorized)
+# --------------------------------------------
 
 index_unconf = []
 i0_l, q_l, a0_l, x0_l = [], [], [], []
 in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], []
 
-# Depuis la bordure amont
+# From the upstream border
 if Q[0] > 0:
     zz_start = B[0] + ((S_ie[0]-B[0]) % z_step)
     z_arr = np.arange(zz_start, S_ie[0], z_step)
@@ -460,7 +460,7 @@ if Q[0] > 0:
         age0_l += list(age0); gi0_l += list(gi0)
         tau0_l += list(qq/Q[0]); slope0_l += [0.]*nup; zieb0_l += [np.nan]*nup
 
-# Depuis la surface
+# From the surface
 for k in range(len(accu_starts)):
     if k > 0:
         index_unconf.append(len(i0_l))
@@ -493,18 +493,18 @@ tau[rows, i0_arr] = tau0_l
 slope[rows, i0_arr] = slope0_l
 zieb_iso[rows, i0_arr] = zieb0_l
 
-# Constantes par trajectoire
-QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr]
+# Constants by trajectory
+QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr] # FIXME: should be rather called Hie0, not H0
 domega1_i0 = fct_domega_dzeta(1., i0_arr)
 c_gamma = a[i0_arr] * domega1_i0 * QH0/Q0/H0
 c_tr = QH0/Q0/H0 * domega1_i0
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
-# ------------------------------
-# Suivi des trajectoires, batch par colonne
-# ------------------------------
-with np.errstate(invalid='ignore', divide='ignore'):
+# ---------------------------------------------
+# Follow-up of trajectories, batch by column
+# ---------------------------------------------
+with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need these ignores?
     for j in range(1, len(x)):
         entered = i0_arr <= j-1
         alive = entered & ~np.isnan(z_ie[:, j-1])
@@ -549,11 +549,11 @@ with np.errstate(invalid='ignore', divide='ignore'):
         sl = (sl + melt_term)/QH[j]
         sl = (sl - fct_domega_dx(zeta, j))*H_ie[j]/dom_dzeta
         geom_term = -(1-zeta)*dHie_dx[j]
-        u_dep = S_ie[j] - z_ie[idx, j]        # profondeur ie sous S_ie
+        u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
         D = np.interp(u_dep, v_grid, D_col[j])
         sl = (sl + geom_term)/D
-        sl = sl - np.interp(u_dep, v_grid, TIE[j])   # terme ∫ d(1/D)/dx
-        sl = sl + dS_dx[j]
+        sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
+        sl = sl + dS_dx[j]  # FIXME: should be part of geom term
         slope[idx, j] = sl
         if slope_diff:
             zieb_iso[idx, j] = z_ie[idx, j-1]-dage*tau[idx, j-1]*a0_arr[idx]
@@ -566,13 +566,13 @@ with np.errstate(invalid='ignore', divide='ignore'):
 print('After following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ------------------------------
-# Champs dérivés 2D
+# Derived fields in 2D
 # ------------------------------
 Zmat = np.full_like(z_ie, np.nan)
 for j in range(len(x)):
     Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
-Xmat = np.where(np.isnan(z_ie), np.nan, x)[...]   # voir note ci-dessous
+Xmat = np.where(np.isnan(z_ie), np.nan, x)
 if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
@@ -585,15 +585,15 @@ if slope_diff:
     SDmat = np.full((ntraj, len(x)), np.nan)
     SDmat[:, 1:-1] = (ZAmat[:, 1:-1]-ZBmat[:, 1:-1])/(x[2:]-x[:-2])[None, :]
 
-# Avancement
+# Advancement
 advanced = np.zeros((ntraj, len(x)), dtype=bool)
 for j in range(1, len(x)):
     advanced[:, j] = (i0_arr <= j-1) & ~np.isnan(z_ie[:, j-1]) & ~np.isnan(z_ie[:, j])
 is_unconf = np.isin(i0_arr, accu_starts[1:]) if len(accu_starts) > 1 else np.zeros(ntraj, dtype=bool)
 
-# ------------------------------
-# prof_col(ii) : profil vertical à la colonne ii (vues, pas de copie)
-# ------------------------------
+# ---------------------------------------------------------------------
+# prof_col(ii) : vertical profile for column ii (view, no copy)
+# ---------------------------------------------------------------------
 def prof_col(ii):
     sel = (i0_arr == ii) | advanced[:, ii]
     pc = {}
@@ -641,14 +641,14 @@ def prof_col(ii):
 print('Before surface quantities:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ----------------------------------------
-# Quantités de surface (vectorisé)
+# Surface quantities (vectorized)
 # ----------------------------------------
 
 alive = ~np.isnan(z_ie)
 ntraj_, nx_ = z_ie.shape
 cols = np.arange(nx_)
 
-# Deux trajectoires les plus hautes par colonne (dernières vivantes)
+# The two highest trajectories by column
 top  = ntraj_-1 - np.argmax(alive[::-1, :], axis=0)
 alive2 = alive.copy()
 alive2[top, cols] = False
@@ -659,7 +659,7 @@ z1, z2 = Zmat[top, cols], Zmat[top2, cols]
 dz = z1 - z2
 ok &= dz != 0
 
-with np.errstate(divide='ignore', invalid='ignore'):
+with np.errstate(divide='ignore', invalid='ignore'): #FIXME: is this ignore necessary?
     tfrac = np.where(ok, (S - z1)/np.where(dz == 0., 1., dz), 0.)
     def surf_extrap(Y):
         y1, y2 = Y[top, cols], Y[top2, cols]
@@ -674,7 +674,7 @@ surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 print('Before creating figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
-# Préparation des données pour figures (tout en 2D)
+# Preparing for figures (in 2D)
 # ---------------------------------------------------------
 
 Xmat = np.where(np.isnan(z_ie), np.nan, x)
@@ -711,7 +711,7 @@ for name in ic:
     ic[name]['DD'] = np.array([0., ic[name]['max_depth']])
 
 # ---------------------------------------------------------
-# Panneaux réutilisables
+# Re-usable panels
 # ---------------------------------------------------------
 
 def top_accu(ax1, yred, ylabel, color='r', comp_x=None, comp_y=None,
@@ -792,7 +792,7 @@ def savefig(fname):
     plt.close()
 
 # ---------------------------------------------------------
-# 1-2. Trajectoires
+# 1-2. Trajectories
 # ---------------------------------------------------------
 
 def traj_figure(depthmode, fname):
@@ -815,7 +815,7 @@ traj_figure(True, 'trajectories_x_depth')
 print('After simple trajectories figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
-# 3-4. Trajectoires colorées
+# 3-4. Colored trajectories
 # ---------------------------------------------------------
 
 def traj_color_figure(depthmode, fname):
@@ -952,7 +952,7 @@ slope_figure(True, 'slope_x_depth')
 print('After slope figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
-# 11. Forages
+# 11. Ice ores
 # ---------------------------------------------------------
 
 for name in ic:
