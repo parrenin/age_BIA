@@ -44,9 +44,6 @@ print('Parameters directory is: ', datadir)
 # ---------------------------------------------------------
 
 # Default values for parameters, to prevent spyder errors
-x_left = 0. #FIXME: the 3 following lines do not seem necessary anymore
-x_right = 100.
-x_step = 1.
 z_step = 5.
 Q_left = 1000.
 Qm_left = 100.
@@ -284,6 +281,13 @@ if comp_surf_age != None:
 
 #x = np.arange(x_left, x_right+x_step, x_step)
 x = grid(x_grid)
+# Adding absissas of ice cores
+ic_x = np.array([ic[n]['x'] for n in ic], dtype=float)
+if ic_x.size:
+    ic_x = ic_x[(ic_x >= x[0]) & (ic_x <= x[-1])]       # dans le domaine
+    # pas de doublon avec un nœud existant (sinon dx=0 dans d_dx !)
+    keep = np.min(np.abs(ic_x[:, None]-x[None, :]), axis=1) > 1e-9
+    x = np.sort(np.concatenate([x, ic_x[keep]]))
 
 a = np.interp(x, x_a, a_measure)
 m = np.interp(x, x_m, m_measure)
@@ -988,7 +992,7 @@ for name in ic:
                  pc['z'][prof_domains[i]:prof_domains[i+1]], color='r')
     if ic[name]['comp'] is not None:
         ax2.plot(ic[name]['cp_x'], S[ii]-ic[name]['cp_depth'], color='r', linestyle='--')
-    ax2.set_xlim(left=x_left, right=ic[name]['x'])
+    ax2.set_xlim(left=x[0], right=ic[name]['x'])
     ax2.set_xlabel('ice origin (km)', color='r', fontsize=15)
     ax2.spines['top'].set_color('r')
     ax2.tick_params(axis='x', colors='r')
