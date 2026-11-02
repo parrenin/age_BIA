@@ -370,7 +370,7 @@ else:
         D_col[:, iv] = np.interp(x/1000., xs_a, Dprof[:, iv])
         R_col[:, iv] = np.interp(x/1000., xs_a, Rprof[:, iv])
 
-# Terme intégral de d(1/D)/dx (variation du profil de densité, pour la pente)
+# Integral term of d(1/D)/dx (varying density profile, for slope)
 G = 1./D_col
 Gx = np.zeros_like(G)
 Gx[1:-1] = (G[2:]-G[:-2])/(x[2:]-x[:-2])[:, None]
@@ -455,7 +455,7 @@ if Q[0] > 0:
         gi0 = H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(zeta, 0)-1/fct_domega_dzeta(1., 0))
         age0 = C0[-1] - np.interp(zeta, zeta_grid, C0)
         nup = z_arr.size
-        i0_l += [0]*nup; q_l += list(qq); a0_l += [a[0]]*nup; x0_l += [x[0]]*nup
+        i0_l += [0]*nup; q_l += list(qq);
         in_l += ['upstream']*nup; z0_l += list(z_arr)
         age0_l += list(age0); gi0_l += list(gi0)
         tau0_l += list(qq/Q[0]); slope0_l += [0.]*nup; zieb0_l += [np.nan]*nup
@@ -468,14 +468,15 @@ for k in range(len(accu_starts)):
     iend = accu_ends[k] if k < len(accu_ends) else len(x)-1
     print(f"Accu area n° {k} starts at x= {x[istart]/1000.:.3f} km and ends at x= {x[iend]/1000.:.3f} km")
     for i in range(istart, iend+1):
-        i0_l.append(i); q_l.append(Q[i]); a0_l.append(a[i]); x0_l.append(x[i])
+        i0_l.append(i); q_l.append(Q[i]);
         in_l.append('surf'); z0_l.append(S_ie[i]); age0_l.append(0.)
         gi0_l.append(0.); tau0_l.append(1.); slope0_l.append(dSie_dx[i])
         zieb0_l.append(S_ie[i-1])   # i=0 -> S_ie[-1], comme l'ancien code
 
 ntraj = len(i0_l)
 i0_arr = np.array(i0_l); q_arr = np.array(q_l)
-a0_arr = np.array(a0_l); x0_arr = np.array(x0_l)
+a0_arr = a[i0_arr]
+x0_arr = x[i0_arr]
 in_arr = np.array(in_l)
 z_ie = np.full((ntraj, len(x)), np.nan)
 steady_age = np.full((ntraj, len(x)), np.nan)
