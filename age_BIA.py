@@ -677,15 +677,9 @@ print('Before creating figures:', round(time.perf_counter()-START_TIME, 4), 's.'
 # Preparing for figures (in 2D)
 # ---------------------------------------------------------
 
-Xmat = np.where(np.isnan(z_ie), np.nan, x)
 
 cuts = [0] + list(index_unconf) + [ntraj]
-domains_list = []
-for k in range(len(cuts)-1):
-    sl = slice(cuts[k], cuts[k+1])
-    domains_list.append({'mat_x': Xmat[sl], 'mat_z': Zmat[sl],
-                         'mat_age': AgeMat[sl], 'mat_tau': tau[sl],
-                         'mat_slope': slope[sl]})
+domain_slices = [slice(cuts[k], cuts[k+1]) for k in range(len(cuts)-1)]
 unconf_list = [Zmat[iu] for iu in index_unconf]
 
 traj_sel = list(range(0, ntraj, step_traj))
@@ -863,11 +857,11 @@ def age_figure(depthmode, fname):
                      color='w', linewidth=1)
     levels = norm_age.inverse(np.linspace(0, 1, 100))
     levels_iso = np.array(fig_age_iso)
-    for dom in domains_list:
-        zt = (S[None, :]-dom['mat_z']) if depthmode else dom['mat_z']
-        ax2.contourf(dom['mat_x']/1000., zt, dom['mat_age']/1000., levels=levels,
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, AgeMat[sl]/1000., levels=levels,
                      cmap='plasma_r', norm=norm_age)
-        cp = ax2.contour(dom['mat_x']/1000., zt, dom['mat_age']/1000.,
+        cp = ax2.contour(Xmat[sl]/1000., zt, AgeMat[sl]/1000.,
                          levels=levels_iso, colors='k', norm=norm_age)
     plot_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -900,11 +894,11 @@ def thinning_figure(depthmode, fname):
     top_accu(ax1, surf_tau, 'surface thinning', ylim_fix=yfix)
     bed_panel(ax2, depthmode)
     levels = np.arange(0., tau_max, 0.1)
-    for dom in domains_list:
-        zt = (S[None, :]-dom['mat_z']) if depthmode else dom['mat_z']
-        ax2.contourf(dom['mat_x']/1000., zt, dom['mat_tau'], levels=100,
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, tau[sl], levels=100,
                      cmap='plasma', norm=norm_tau)
-        cp = ax2.contour(dom['mat_x']/1000., zt, dom['mat_tau'], levels=levels,
+        cp = ax2.contour(Xmat[sl]/1000., zt, tau[sl], levels=levels,
                          colors='k', norm=norm_tau)
     plot_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
@@ -933,9 +927,9 @@ def slope_figure(depthmode, fname):
                                    figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
     top_accu(ax1, surf_slope, 'surf. layer slope')
     bed_panel(ax2, depthmode)
-    for dom in domains_list:
-        zt = (S[None, :]-dom['mat_z']) if depthmode else dom['mat_z']
-        cp = ax2.contourf(dom['mat_x']/1000., zt, dom['mat_slope'],
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        cp = ax2.contourf(Xmat[sl]/1000., zt, slope[sl],
                           levels=levels_slope, cmap='PuOr')
     plot_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
