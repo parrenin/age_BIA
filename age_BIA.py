@@ -7,8 +7,6 @@ Ceci est un script temporaire.
 
 # TODO: plot Y
 # TODO: exact formula for the age increase
-# TDO: use panda for inputs
-# TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
 # TODO: Output for isochrones
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
@@ -162,27 +160,17 @@ def fct_gamma_int(j, qq, zeta):
 # Loading files for Geographic data, arrays creations
 # -----------------------------------------------------
 
-# Steady accumulation
-x_a, a_measure = np.loadtxt(datadir+'accumulation.txt', unpack=True)
-
-# Melting
-x_m, m_measure = np.loadtxt(datadir+'melting.txt', unpack=True)
-
-# Sliding rate
-x_s, s_measure = np.loadtxt(datadir+'sliding.txt', unpack=True)
-
-# Lliboutry parameter
-x_p, p_measure = np.loadtxt(datadir+'p_Lliboutry.txt', unpack=True)
-
-# Surface
-x_S, S_measure = np.loadtxt(datadir+'surface.txt', unpack=True)
-
-# Thickness
-x_H, H_measure = np.loadtxt(datadir+'thickness.txt', unpack=True)
-
-# Tube width
-x_Y, Y_measure = np.loadtxt(datadir+'tube_width.txt', unpack=True)
-
+GEO_INPUTS = ('accumulation', 'melting', 'sliding', 'p_Lliboutry',
+              'surface', 'thickness', 'tube_width')
+geo = {name: np.loadtxt(datadir+name+'.txt', unpack=True)
+       for name in GEO_INPUTS}
+x_a, a_measure = geo['accumulation']
+x_m, m_measure = geo['melting']
+x_s, s_measure = geo['sliding']
+x_p, p_measure = geo['p_Lliboutry']
+x_S, S_measure = geo['surface']
+x_H, H_measure = geo['thickness']
+x_Y, Y_measure = geo['tube_width']
 
 # Reading of observed bedrock when different from mechanical bedrock
 if obs_bedrock is not None:
