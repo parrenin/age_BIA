@@ -11,14 +11,11 @@ Ceci est un script temporaire.
 # TODO: Parametrize input files names?
 # TODO: comparison files for unconformities
 # TODO: can we interpolate age/origin/etc. on the grid?
-# TODO: Use a gridded interpolation for inversion of omega, instead of fsolve?
 # TODO: Output for isochrones
-# TODO: Clean parameter file (regroup parameters, etc.)
 # TODO: Remove 'a0' and 'x0' from trajs and profs since we have 'i0' now
 # TODO: trajs and profs: store zeta, not z_ie.
 # TODO: Implement varying z grid as well
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
-# TODO: Add sliding term
 
 import sys
 import numpy as np
@@ -29,7 +26,6 @@ from matplotlib.colors import SymLogNorm, Normalize
 import time
 import os
 import resource
-import warnings
 import pandas as pd
 import math
 

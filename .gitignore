@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Output figures
+*.pdf
+*.svg
+*.png
+
+# Output text files
+*output.txt

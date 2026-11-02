@@ -5,8 +5,6 @@ import sys
 dir = sys.argv[1]
 inclusive = True
 
-import os
-import re
 import sys
 
 dir = sys.argv[1]
