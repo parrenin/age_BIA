@@ -15,7 +15,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from matplotlib.colors import SymLogNorm, Normalize, LogNorm
+from matplotlib.colors import SymLogNorm, Normalize
 import time
 import os
 import resource
@@ -55,6 +55,7 @@ comp_isochrones = None
 comp_iso_ages = None
 comp_surf_vel = None
 comp_surf_age = None
+comp_unconf = None
 x_start = None
 solid_fraction = None
 output_fl = False
@@ -179,7 +180,7 @@ if obs_bedrock is not None:
     obs_bed_depth = readarray[1, :]
 
 # ---------------------------------------------------------------
-# Reading of comparison isochrones
+# Reading of comparison isochrones and unconformities
 # ---------------------------------------------------------------
 
 if comp_isochrones is not None:
@@ -192,6 +193,13 @@ if comp_iso_ages is not None:
     readarray = np.loadtxt(datadir+comp_iso_ages, unpack = True)
     cp_iso_ages = readarray[0, :]
     cp_iso_ages_sigma = readarray[1, :]
+
+if comp_unconf is not None:
+    readarray = np.loadtxt(datadir+comp_unconf, unpack=True)
+    cp_unc_x = readarray[0, :]              # x en km (cohérent avec l'axe des figures)
+    cp_unc_depth = readarray[1:, :]          # une ligne par discontinuité observée
+    cp_unc_nb = cp_unc_depth.shape[0]
+    cp_unc_z = np.interp(cp_unc_x, x_S/1000., S_measure) - cp_unc_depth
 
 # ---------------------------------------------------------------
 # Loading data from temporal_factor.txt
@@ -764,6 +772,14 @@ def plot_unconf(ax2, depthmode):
         ax2.plot(x/1000., (S-zu) if depthmode else zu,
                  label='Discontinuities', color='k', linewidth=4., linestyle='--')
 
+def plot_comp_unconf(ax2, depthmode):
+    if comp_unconf is None:
+        return
+    for i in range(cp_unc_nb):
+        ax2.plot(cp_unc_x,
+                 cp_unc_depth[i, :] if depthmode else cp_unc_z[i, :],
+                 color='k', linewidth=1.5, linestyle='dotted')
+
 def plot_color_trajs(ax2, depthmode, tlist, norm):
     for t in tlist:
         xx, zz, aa = Xmat[t], Zmat[t], AgeMat[t]
@@ -864,6 +880,7 @@ def age_figure(depthmode, fname):
         cp = ax2.contour(Xmat[sl]/1000., zt, AgeMat[sl]/1000.,
                          levels=levels_iso, colors='k', norm=norm_age)
     plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
     if depthmode:
