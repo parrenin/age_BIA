@@ -5,7 +5,6 @@
 Ceci est un script temporaire.
 """
 
-# TODO: plot Y
 # TODO: exact formula for the age increase
 # TODO: comparison files for unconformities
 # TODO: Output for isochrones
@@ -16,7 +15,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from matplotlib.colors import SymLogNorm, Normalize
+from matplotlib.colors import SymLogNorm, Normalize, LogNorm
 import time
 import os
 import resource
@@ -45,6 +44,7 @@ fig_format = 'pdf'
 fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
 scaling_age = 10.
+scaling_q = 10.
 ic = {}
 color_core = 'r'
 lw_core = 2
@@ -570,6 +570,7 @@ for j in range(len(x)):
     Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
 Xmat = np.where(np.isnan(z_ie), np.nan, x)
+Qmat = np.where(np.isnan(z_ie), np.nan, q_arr[:, None])
 if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
@@ -706,7 +707,7 @@ for name in ic:
 # ---------------------------------------------------------
 
 def top_accu(ax1, yred, ylabel, color='r', comp_x=None, comp_y=None,
-             marker=None, ylim_fix=None):
+             marker=None, ylim_fix=None, yscale_fix=None):
     ax1.plot(x/1000., a*R[0], color='k', linewidth=2)
     ax1.set_ylabel('PD accu. (m/yr)', fontsize=14)
     ax1.plot(x/1000., np.zeros_like(x), color='k', linewidth=2, linestyle='--')
@@ -719,6 +720,8 @@ def top_accu(ax1, yred, ylabel, color='r', comp_x=None, comp_y=None,
             ax1b.plot(comp_x, comp_y, color=color, linewidth=2, linestyle='--')
     ax1b.set_ylabel(ylabel, color=color, fontsize=14)
     ax1b.tick_params(axis='y', colors=color)
+    if yscale_fix is not None:
+        yscale_fix(ax1b)          # ex.: ax.set_yscale('symlog', linthresh=...)
     if ylim_fix is not None:
         bottom, top = ax1b.get_ylim()
         ax1b.set_ylim(ylim_fix(bottom, top))
@@ -942,8 +945,47 @@ slope_figure(False, 'slope_x_z')
 slope_figure(True, 'slope_x_depth')
 print('After slope figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
+
 # ---------------------------------------------------------
-# 11. Ice ores
+# 11-12. Stream function
+# ---------------------------------------------------------
+
+q_min, q_max = np.nanmin(Qmat), np.nanmax(Qmat)
+q_max = np.nanmax(Qmat)
+q_lin = q_max/scaling_q
+
+norm_q = SymLogNorm(linthresh=q_lin, linscale=1, vmin=0., vmax=q_max)
+levels_q = norm_q.inverse(np.linspace(0., 1., 21))
+
+def q_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    top_accu(ax1, Q, 'Total flux (m$^3$/yr)',
+             yscale_fix=lambda ax: ax.set_yscale('symlog', linthresh=q_lin))
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, Qmat[sl], levels=levels_q,
+                     cmap='viridis', norm=norm_q)
+        ax2.contour(Xmat[sl]/1000., zt, Qmat[sl], levels=levels_q[1:-1:2],
+                    colors='k', linewidths=0.5)
+    plot_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=norm_q)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+    cb.set_label(label='stream function q (m$^3$/yr)', size=18)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+q_figure(False, 'stream_function_x_z')
+q_figure(True, 'stream_function_x_depth')
+
+# ---------------------------------------------------------
+# 13. Ice ores
 # ---------------------------------------------------------
 
 for name in ic:

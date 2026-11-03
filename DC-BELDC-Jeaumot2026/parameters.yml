@@ -10,6 +10,7 @@ Qm_left: 0.
 fig_age_iso: [73.2, 84.8, 90.8, 97.7, 115.8, 122.9, 133.2, 159.6, 178.2, 202.5, 214.4, 239.9, 243.2, 305.3, 320.4, 335.7, 367.3, 399.5, 475.3]
 step_traj: 10
 scaling_age: 100.
+scaling_q: 1.0e+10
 fig_format: 'svg'
 temp_factor: 'temporal_factor.txt'
 obs_bedrock: 'real_thickness.txt'
