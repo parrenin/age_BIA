@@ -6,7 +6,6 @@ Ceci est un script temporaire.
 """
 
 # TODO: exact formula for the age increase
-# TODO: comparison files for unconformities
 # TODO: Output for isochrones
 # TODO: Check why age is not correct at beginning of DC-BELDC flow line
 
@@ -448,22 +447,35 @@ index_unconf = []
 i0_l, q_l, a0_l, x0_l = [], [], [], []
 in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], []
 
-# From the upstream border
+# From the upstream border (Q[0]>0) or the second x node (Q[0]=0)
 if Q[0] > 0:
+    i_b = 0          # condition amont
+else:
+    i_b = 1          # condition dôme sur le premier profil
+if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
+    mu_b = Qm[i_b]/QH[i_b]
+    f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
+    C_b = np.concatenate(([0.], np.cumsum(0.5*(f_b[1:]+f_b[:-1])*np.diff(zeta_grid))))
     zg = grid({**z_grid, 'start': 0., 'end': 1.})
     zeta_arr = zg[(zg < 1.) & (zg > 0.)]
-    z_arr = B[0] + zeta_arr*H_ie[0] 
-    if z_arr.size:
-        omega = fct_omega(zeta_arr, 0)
-        qq = Qm[0] + (Q[0]-Qm[0])*omega
-        gi0 = H_ie[0]/a[0]*Q[0]/QH[0]*(1/fct_domega_dzeta(zeta_arr, 0)-1/fct_domega_dzeta(1., 0))
-        age0 = C0[-1] - np.interp(zeta_arr, zeta_grid, C0)
-        nup = z_arr.size
-        i0_l += [0]*nup; q_l += list(qq);
-        in_l += ['upstream']*nup; z0_l += list(z_arr)
-        age0_l += list(age0); gi0_l += list(gi0)
-        tau0_l += list(qq/Q[0]); slope0_l += [0.]*nup; zieb0_l += [np.nan]*nup
-
+    if zeta_arr.size:
+        omega = fct_omega(zeta_arr, i_b)
+        qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
+        gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]*\
+              (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
+        age0 = C_b[-1] - np.interp(zeta_arr, zeta_grid, C_b)
+        z_arr = B[i_b] + zeta_arr*H_ie[i_b]
+        nb = z_arr.size
+        i0_l += [i_b]*nb
+        q_l += list(qq)
+        in_l += ['upstream']*nb
+        z0_l += list(z_arr)
+        age0_l += list(age0)
+        gi0_l += list(gi0)
+        tau0_l += list(qq/Q[i_b])
+        slope0_l += [0.]*nb
+        zieb0_l += [np.nan]*nb
+        
 # From the surface
 for k in range(len(accu_starts)):
     if k > 0:
