@@ -55,7 +55,6 @@ comp_iso_ages = None
 comp_surf_vel = None
 comp_surf_age = None
 comp_unconf = None
-x_start = None
 solid_fraction = None
 output_fl = False
 slope_diff = False
@@ -394,12 +393,10 @@ for i in range(len(x)): # FIXME: avoid this loop with a vector function
 # Determination of accumulation areas
 # ------------------------------------
 
-if x_start == None and Q[0]>0: 
+if Q[0]>0: 
     accu_starts = [0]
-elif x_start == None and Q[0] == 0:
-    accu_starts = [1]
 else:
-    accu_starts = [np.argmin(np.abs(x_start-x/1000.))]
+    accu_starts = [1]
 accu_ends = []
 for i in range(1, len(x)-1):
     if Q[i] > Q[i-1] and Q[i] >= Q[i+1] : #To be checked
