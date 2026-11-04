@@ -452,7 +452,11 @@ else:
 if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
     mu_b = Qm[i_b]/QH[i_b]
     f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
-    C_b = np.concatenate(([0.], np.cumsum(0.5*(f_b[1:]+f_b[:-1])*np.diff(zeta_grid))))
+    # Primitive par trapèzes intégrée DEPUIS LA SURFACE (zeta=1) vers le socle :
+    # la singularité éventuelle en zeta=0 reste confinée aux dernières mailles.
+    fs = f_b[::-1]                          # intégrande, de la surface vers le socle
+    A_b = np.concatenate(([0.], np.cumsum(0.5*(fs[1:]+fs[:-1])*np.diff(zeta_grid))))
+    age_grid = A_b[::-1]                    # âges remis sur zeta_grid croissant
     zg = grid({**z_grid, 'start': 0., 'end': 1.})
     zeta_arr = zg[(zg < 1.) & (zg > 0.)]
     if zeta_arr.size:
@@ -460,7 +464,7 @@ if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
         qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
         gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]*\
               (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
-        age0 = C_b[-1] - np.interp(zeta_arr, zeta_grid, C_b)
+        age0 = np.interp(zeta_arr, zeta_grid, age_grid)
         z_arr = B[i_b] + zeta_arr*H_ie[i_b]
         nb = z_arr.size
         i0_l += [i_b]*nb
@@ -472,7 +476,7 @@ if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
         tau0_l += list(qq/Q[i_b])
         slope0_l += [0.]*nb
         zieb0_l += [np.nan]*nb
-        
+
 # From the surface
 for k in range(len(accu_starts)):
     if k > 0:
