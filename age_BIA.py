@@ -515,6 +515,7 @@ c_tr = QH0/Q0/H0 * domega1_i0
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
+
 # ---------------------------------------------
 # Follow-up of trajectories, batch by column
 # ---------------------------------------------
