@@ -332,6 +332,14 @@ else:
     mu[0] = mu[1]
 QH = Q - Qm
 
+# The model assumes no reverse flow: the effective flux QH = Q - Qm must
+# stay positive at every node where trajectories live. Node 0 is only
+# used when there is an influx at the upstream border (Q[0] > 0); in the
+# dome case (Q[0] = 0) it is unused and QH[0] = 0 is legitimate.
+if np.any(QH[1:] <= 0) or (Q[0] > 0 and QH[0] <= 0):
+    print('Warning: effective flux QH = Q - Qm becomes non-positive '
+          'at some point! Exiting...')
+    sys.exit()
 
 print('Before firn correction calculations:', round(time.perf_counter()-START_TIME, 4), 's.')
 
@@ -460,33 +468,32 @@ in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], [
 
 # From the upstream border (Q[0]>0) or the second x node (Q[0]=0)
 # From the upstream border or dome, at node i_b
-if Q[i_b] > Qm[i_b]:                       # skip degenerate case
-    mu_b = Qm[i_b]/QH[i_b]
-    f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
-    # Trapezoidal primitive integrated FROM the surface (zeta=1) downwards:
-    # a possible singularity at zeta=0 stays confined to the last cells.
-    fs = f_b[::-1]
-    A_b = np.concatenate(([0.], np.cumsum(0.5*(fs[1:]+fs[:-1])*np.diff(zeta_grid))))
-    age_grid = A_b[::-1]
-    zg = grid({**z_grid, 'start': 0., 'end': 1.})
-    zeta_arr = zg[(zg < 1.) & (zg > 0.)]
-    if zeta_arr.size:
-        omega = fct_omega(zeta_arr, i_b)
-        qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
-        gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]*\
-              (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
-        age0 = np.interp(zeta_arr, zeta_grid, age_grid)
-        z_arr = B[i_b] + zeta_arr*H_ie[i_b]
-        nb = z_arr.size
-        i0_l += [i_b]*nb
-        q_l += list(qq)
-        in_l += ['upstream']*nb
-        z0_l += list(z_arr)
-        age0_l += list(age0)
-        gi0_l += list(gi0)
-        tau0_l += list(qq/Q[i_b])
-        slope0_l += [0.]*nb
-        zieb0_l += [np.nan]*nb
+mu_b = Qm[i_b]/QH[i_b]
+f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
+# Trapezoidal primitive integrated FROM the surface (zeta=1) downwards:
+# a possible singularity at zeta=0 stays confined to the last cells.
+fs = f_b[::-1]
+A_b = np.concatenate(([0.], np.cumsum(0.5*(fs[1:]+fs[:-1])*np.diff(zeta_grid))))
+age_grid = A_b[::-1]
+zg = grid({**z_grid, 'start': 0., 'end': 1.})
+zeta_arr = zg[(zg < 1.) & (zg > 0.)]
+if zeta_arr.size:
+    omega = fct_omega(zeta_arr, i_b)
+    qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
+    gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]*\
+          (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
+    age0 = np.interp(zeta_arr, zeta_grid, age_grid)
+    z_arr = B[i_b] + zeta_arr*H_ie[i_b]
+    nb = z_arr.size
+    i0_l += [i_b]*nb
+    q_l += list(qq)
+    in_l += ['upstream']*nb
+    z0_l += list(z_arr)
+    age0_l += list(age0)
+    gi0_l += list(gi0)
+    tau0_l += list(qq/Q[i_b])
+    slope0_l += [0.]*nb
+    zieb0_l += [np.nan]*nb
 
 
 
