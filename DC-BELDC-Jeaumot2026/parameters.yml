@@ -1,13 +1,13 @@
 x_grid: #depth grid for the age calculation
-    type: 'linear_step'
+    type: 'regular'
     start: 0.
     end: 40.7
     nb_steps: 814
-    ratio: 0.1
 z_grid:
     type: 'linear_step'
-    nb_steps: 2
-    ratio: 1.9
+    nb_steps: 50
+    ratio: 0.2
+xstart_traj: 1.527
 Q_left: 0.
 Qm_left: 0.
 fig_age_iso: [73.2, 84.8, 90.8, 97.7, 115.8, 122.9, 133.2, 159.6, 178.2, 202.5, 214.4, 239.9, 243.2, 305.3, 320.4, 335.7, 367.3, 399.5, 475.3]

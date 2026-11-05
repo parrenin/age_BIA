@@ -7,7 +7,8 @@ Ceci est un script temporaire.
 
 # TODO: exact formula for the age increase
 # TODO: Output for isochrones
-# TODO: Check why age is not correct at beginning of DC-BELDC flow line
+# TODO: Check why slope converges slowly at DC for the DC-BELDC flow line (even for age_flow_line)
+# TODO: test case for a dome and check isochrones near the dome
 
 import sys
 import numpy as np
@@ -36,7 +37,7 @@ print('Parameters directory is: ', datadir)
 # ---------------------------------------------------------
 
 # Default values for parameters, to prevent spyder errors
-z_step = 5.
+xstart_traj = None
 Q_left = 1000.
 Qm_left = 100.
 fig_format = 'pdf'
@@ -390,21 +391,43 @@ for i in range(len(x)): # FIXME: avoid this loop with a vector function
 
 
 # ------------------------------------
+# Determination of the trajectory start node
+# ------------------------------------
+
+# Fluxes are computed over the whole x grid, but trajectories (both
+# upstream/border and surface ones) only start at node i_b. This allows
+# skipping the near-divide zone, where the pseudo-steady horizontal
+# scheme is singular.
+if xstart_traj is None:
+    # Default: upstream border if there is an influx, otherwise the dome
+    # condition is applied on the first inner profile.
+    if Q[0] > 0:
+        i_b = 0
+    else:
+        i_b = 1
+else:
+    i_b = int(np.argmin(np.abs(x/1000. - xstart_traj)))
+
+# Trajectories must start in an accumulation zone
+if a[i_b] <= 0.:
+    sys.exit('Trajectory start node (x = %.3f km) is not in an accumulation '
+             'zone (a = %.4f m/yr). Check xstart_traj.'
+             % (x[i_b]/1000., a[i_b]))
+print('Trajectories start at x = %.3f km (node %d).' % (x[i_b]/1000., i_b))
+
+# ------------------------------------
 # Determination of accumulation areas
 # ------------------------------------
 
-if Q[0]>0: 
-    accu_starts = [0]
-else:
-    accu_starts = [1]
+accu_starts = [i_b]
 accu_ends = []
-for i in range(1, len(x)-1):
-    if Q[i] > Q[i-1] and Q[i] >= Q[i+1] : #To be checked
+for i in range(max(i_b, 1), len(x)-1):
+    if Q[i] > Q[i-1] and Q[i] >= Q[i+1]:  # To be checked
         accu_ends.append(i)
-    elif Q[i] <= Q[i-1] and Q[i] < Q[i+1] : #To be checked
+    elif Q[i] <= Q[i-1] and Q[i] < Q[i+1]:  # To be checked
         accu_starts.append(i+1)
-
-
+        
+        
 # --------------------------------------
 # Calculation of x derivatives
 # --------------------------------------
@@ -426,15 +449,6 @@ for i in range(len(x)):
 
 print('Before initialisation of trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
-# ----------------------------------------
-# Calculating upstream age 
-# ----------------------------------------
-
-# Trapezoidal integration of the age on the upstream boundary
-if Q[0] > 0: 
-    mu0 = Qm[0]/QH[0]
-    f0 = H_ie[0]*(1+mu0)/(a[0]*(tab_omega[:, 0]+mu0))
-    C0 = np.concatenate(([0.], np.cumsum(0.5*(f0[1:]+f0[:-1])*np.diff(zeta_grid))))
 
 # --------------------------------------------
 # Initialisation of trajectories (vectorized)
@@ -445,18 +459,15 @@ i0_l, q_l, a0_l, x0_l = [], [], [], []
 in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], []
 
 # From the upstream border (Q[0]>0) or the second x node (Q[0]=0)
-if Q[0] > 0:
-    i_b = 0          # condition amont
-else:
-    i_b = 1          # condition dôme sur le premier profil
-if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
+# From the upstream border or dome, at node i_b
+if Q[i_b] > Qm[i_b]:                       # skip degenerate case
     mu_b = Qm[i_b]/QH[i_b]
     f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
-    # Primitive par trapèzes intégrée DEPUIS LA SURFACE (zeta=1) vers le socle :
-    # la singularité éventuelle en zeta=0 reste confinée aux dernières mailles.
-    fs = f_b[::-1]                          # intégrande, de la surface vers le socle
+    # Trapezoidal primitive integrated FROM the surface (zeta=1) downwards:
+    # a possible singularity at zeta=0 stays confined to the last cells.
+    fs = f_b[::-1]
     A_b = np.concatenate(([0.], np.cumsum(0.5*(fs[1:]+fs[:-1])*np.diff(zeta_grid))))
-    age_grid = A_b[::-1]                    # âges remis sur zeta_grid croissant
+    age_grid = A_b[::-1]
     zg = grid({**z_grid, 'start': 0., 'end': 1.})
     zeta_arr = zg[(zg < 1.) & (zg > 0.)]
     if zeta_arr.size:
@@ -476,6 +487,8 @@ if Q[i_b] > Qm[i_b]:                       # garde le cas dégénéré
         tau0_l += list(qq/Q[i_b])
         slope0_l += [0.]*nb
         zieb0_l += [np.nan]*nb
+
+
 
 # From the surface
 for k in range(len(accu_starts)):
