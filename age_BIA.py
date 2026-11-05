@@ -6,7 +6,6 @@ Ceci est un script temporaire.
 """
 
 # TODO: exact formula for the age increase
-# TODO: Output for isochrones
 # TODO: Check why slope converges slowly at DC for the DC-BELDC flow line (even for age_flow_line)
 # TODO: test case for a dome and check isochrones near the dome
 
