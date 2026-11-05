@@ -1129,13 +1129,17 @@ if temp_factor is not None:
     savefig('temporal_factor')
 
 # ---------------------------------------------------------
-# OUTPUTS
+# OUTPUT Flow line
 # ---------------------------------------------------------
 
 if output_fl:
     output = np.vstack((x/1000., Y, a*R[0], m*R[0], Q, Qm, surf_vel))
     np.savetxt(datadir+'flow_line_output.txt', np.transpose(output),
                header='x(km) tube_width PD_accu(m/yr) PD_melting(m/yr) total_flux melting_flux PD_surf_velocity(m/yr)')
+
+# ---------------------------------------------------------
+# OUTPUT ice core
+# ---------------------------------------------------------
 
 for name in ic:
     ii = np.argmin(np.abs(x/1000. - ic[name]['x']))
@@ -1146,6 +1150,38 @@ for name in ic:
         output = np.insert(output, prof_domains[i]+i, np.nan, axis=1)
     np.savetxt(datadir+name+'_ice_core_output.txt', np.transpose(output)[::-1],
                header='depth(m) age(yr) origin(km) thinning accu(m/yr')
+
+# ---------------------------------------------------------
+# Isochrones output
+# ---------------------------------------------------------
+
+# Isochrone ages: same as plotted on the age figures (fig_age_iso
+# is in kyr, while profile ages are in yr).
+ages_iso = np.array(fig_age_iso)*1000.
+iso_depth = np.full((len(x), len(ages_iso)), np.nan)
+# For each column, interpolate the depth of each isochrone within
+# its profile segment (age is monotonic inside a segment, with jumps
+# at the unconformities; an age falling inside a jump does not exist
+# at this x and stays NaN).
+for ii in range(i_b, len(x)):
+    pc = prof_col(ii)
+    prof_domains = [0] + list(pc['unconf']) + [len(pc['z'])]
+    for k in range(len(prof_domains)-1):
+        d1, d2 = prof_domains[k], prof_domains[k+1]
+        seg_age = pc['age'][d1:d2]        # decreasing along rows (old -> young)
+        if seg_age.size < 2 or seg_age[0] == seg_age[-1]:
+            continue
+        a_inc = seg_age[::-1]             # increasing, as required by np.interp
+        z_inc = pc['z'][d1:d2][::-1]
+        in_seg = (ages_iso >= a_inc[0]) & (ages_iso <= a_inc[-1])
+        if in_seg.any():
+            iso_depth[ii, in_seg] = S[ii] - np.interp(ages_iso[in_seg],
+                                                      a_inc, z_inc)
+out = np.vstack((x/1000., iso_depth.T))
+header = 'x(km) ' + ' '.join('depth_age_%gkyr(m)' % A
+                             for A in fig_age_iso)
+np.savetxt(datadir+'isochrones_output.txt', np.transpose(out),
+           header=header)
 
 MESSAGE = 'Program execution time: '+str(time.perf_counter()-START_TIME)+' s.'
 print(MESSAGE)
