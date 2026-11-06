@@ -7,7 +7,7 @@ z_grid:
     type: 'linear_step'
     nb_steps: 50
     ratio: 0.2
-xstart_traj: 1.527
+xstart_traj: 1.5
 Q_left: 0.
 Qm_left: 0.
 fig_age_iso: [73.2, 84.8, 90.8, 97.7, 115.8, 122.9, 133.2, 159.6, 178.2, 202.5, 214.4, 239.9, 243.2, 305.3, 320.4, 335.7, 367.3, 399.5, 475.3]
@@ -23,6 +23,7 @@ solid_fraction: 'solid_fraction.txt'
 output_fl: True
 comp_surf_vel: 'surf_velocity_age_flow_line.txt'
 fig_slope_maxrange: 0.5
+fig_age_maxrange: 2000.
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km

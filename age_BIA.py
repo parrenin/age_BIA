@@ -43,6 +43,7 @@ fig_format = 'pdf'
 fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
 scaling_age = 10.
+fig_age_maxrange = None
 scaling_q = 10.
 ic = {}
 color_core = 'r'
@@ -361,29 +362,31 @@ v_max = 1.5*np.max(H_ie)
 nv = max(int(np.ceil(v_max/dzie_D))+1, 2)
 v_grid = np.linspace(0., v_max, nv)
 nanc = len(sf_anchors)
+sf_single = (nanc == 1)
 Dprof = np.empty((nanc, nv)); Rprof = np.empty((nanc, nv))
 for k in range(nanc):
     Dd, DD, Die = sf_anchors[k][1], sf_anchors[k][2], sf_anchors[k][3]
     Dprof[k] = np.interp(v_grid, Die, DD)
     Rprof[k] = np.interp(v_grid, Die, Dd)
-if nanc == 1:
-    D_col = np.tile(Dprof[0], (len(x), 1))
-    R_col = np.tile(Rprof[0], (len(x), 1))
+if sf_single:
+    # Single, x-invariant profile: zero-copy views (no (nx, nv) copy),
+    # and no varying-density term (d(1/D)/dx = 0, so TIE = 0).
+    D_col = np.broadcast_to(Dprof[0], (len(x), nv))
+    R_col = np.broadcast_to(Rprof[0], (len(x), nv))
+    R_row = Rprof[0]
 else:
     D_col = np.empty((len(x), nv)); R_col = np.empty((len(x), nv))
     for iv in range(nv):
         D_col[:, iv] = np.interp(x/1000., xs_a, Dprof[:, iv])
         R_col[:, iv] = np.interp(x/1000., xs_a, Rprof[:, iv])
-
-# Integral term of d(1/D)/dx (varying density profile, for slope)
-G = 1./D_col
-Gx = np.zeros_like(G)
-Gx[1:-1] = (G[2:]-G[:-2])/(x[2:]-x[:-2])[:, None]
-Gx[0] = (G[1]-G[0])/(x[1]-x[0])
-Gx[-1] = (G[-1]-G[-2])/(x[-1]-x[-2])
-TIE = np.zeros_like(G)
-TIE[:, 1:] = np.cumsum(0.5*(Gx[:, 1:]+Gx[:, :-1])*np.diff(v_grid)[None, :], axis=1)
-
+    # Integral term of d(1/D)/dx (varying density profile, for slope)
+    G = 1./D_col
+    Gx = np.zeros_like(G)
+    Gx[1:-1] = (G[2:]-G[:-2])/(x[2:]-x[:-2])[:, None]
+    Gx[0] = (G[1]-G[0])/x[1]-x[0]
+    Gx[-1] = (G[-1]-G[-2])/(x[-1]-x[-2])
+    TIE = np.zeros_like(G)
+    TIE[:, 1:] = np.cumsum(0.5*(Gx[:, 1:]+Gx[:, :-1])*np.diff(v_grid)[None, :], axis=1)
 
 print('After firn correction calculations:', round(time.perf_counter()-START_TIME, 4), 's.')
 
@@ -590,7 +593,8 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
         D = np.interp(u_dep, v_grid, D_col[j])
         sl = (sl + geom_term)/D
-        sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
+        if not sf_single:
+            sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
         sl = sl + dS_dx[j]  # FIXME: should be part of geom term
         slope[idx, j] = sl
         if slope_diff:
@@ -606,9 +610,15 @@ print('After following trajectories:', round(time.perf_counter()-START_TIME, 4),
 # ------------------------------
 # Derived fields in 2D
 # ------------------------------
-Zmat = np.full_like(z_ie, np.nan)
-for j in range(len(x)):
-    Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
+# Real-depth conversion of the trajectories
+if sf_single:
+    # Single profile: one vectorized interpolation over the whole field
+    Zmat = S[None, :] - np.interp((S_ie[None, :]-z_ie).ravel(),
+                                  v_grid, R_row).reshape(z_ie.shape)
+else:
+    Zmat = np.full_like(z_ie, np.nan)
+    for j in range(len(x)):
+        Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
 Xmat = np.where(np.isnan(z_ie), np.nan, x)
 Qmat = np.where(np.isnan(z_ie), np.nan, q_arr[:, None])
@@ -616,11 +626,19 @@ if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
     ZAmat = np.full((ntraj, len(x)), np.nan)
-    for j in range(len(x)):
-        if j >= 1:
-            ZBmat[:, j] = S[j-1] - np.interp(S_ie[j-1] - zieb_iso[:, j], v_grid, R_col[j-1])
-        if j <= len(x)-2:
-            ZAmat[:, j] = S[j+1] - np.interp(S_ie[j+1] - ziea_iso[:, j], v_grid, R_col[j+1])
+    if sf_single:
+        ZBmat[:, 1:] = S[None, :-1] - np.interp(
+            (S_ie[None, :-1]-zieb_iso[:, 1:]).ravel(),
+            v_grid, R_row).reshape(ntraj, len(x)-1)
+        ZAmat[:, :-1] = S[None, 1:] - np.interp(
+            (S_ie[None, 1:]-ziea_iso[:, :-1]).ravel(),
+            v_grid, R_row).reshape(ntraj, len(x)-1)
+    else:
+        for j in range(len(x)):
+            if j >= 1:
+                ZBmat[:, j] = S[j-1] - np.interp(S_ie[j-1] - zieb_iso[:, j], v_grid, R_col[j-1])
+            if j <= len(x)-2:
+                ZAmat[:, j] = S[j+1] - np.interp(S_ie[j+1] - ziea_iso[:, j], v_grid, R_col[j+1])
     SDmat = np.full((ntraj, len(x)), np.nan)
     SDmat[:, 1:-1] = (ZAmat[:, 1:-1]-ZBmat[:, 1:-1])/(x[2:]-x[:-2])[None, :]
 
@@ -722,7 +740,13 @@ domain_slices = [slice(cuts[k], cuts[k+1]) for k in range(len(cuts)-1)]
 unconf_list = [Zmat[iu] for iu in index_unconf]
 
 traj_sel = list(range(0, ntraj, step_traj))
-age_max = max(np.nanmax(AgeMat[t]/1000.) for t in traj_sel)
+if fig_age_maxrange is None:
+    # Auto range from the sampled trajectories
+    age_max = max(np.nanmax(AgeMat[t]/1000.) for t in traj_sel)
+else:
+    # Manual cap (kyr), to avoid a few barely visible deep points
+    # stretching the whole color scale
+    age_max = fig_age_maxrange
 linthresh = age_max/scaling_age
 norm_age = SymLogNorm(linthresh=linthresh, linscale=1, vmin=0., vmax=age_max)
 
