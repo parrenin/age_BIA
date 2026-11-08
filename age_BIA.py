@@ -513,6 +513,7 @@ i0_arr = np.array(i0_l); q_arr = np.array(q_l)
 a0_arr = a[i0_arr]
 x0_arr = x[i0_arr]
 in_arr = np.array(in_l)
+z0_arr = np.array(z0_l) 
 z_ie = np.full((ntraj, len(x)), np.nan)
 steady_age = np.full((ntraj, len(x)), np.nan)
 gammaint = np.full((ntraj, len(x)), np.nan)
@@ -520,6 +521,8 @@ tau = np.full((ntraj, len(x)), np.nan)
 slope = np.full((ntraj, len(x)), np.nan)
 zieb_iso = np.full((ntraj, len(x)), np.nan)
 ziea_iso = np.full((ntraj, len(x)), np.nan)
+agegrad = np.full((ntraj, len(x)), np.nan)
+gamma_mat = np.full((ntraj, len(x)), np.nan)
 
 rows = np.arange(ntraj)
 z_ie[rows, i0_arr] = z0_l
@@ -534,6 +537,16 @@ QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr] # FIXME: should be rather ca
 domega1_i0 = fct_domega_dzeta(1., i0_arr)
 c_gamma = a[i0_arr] * domega1_i0 * QH0/H0 * q_arr/Q0
 c_tr = QH0/Q0/H0 * domega1_i0
+# Order budget at birth: gamma from the upstream initialization (Eq. S3.6),
+# zero for surface-born trajectories
+gamma_mat[rows, i0_arr] = c_gamma*np.array(gi0_l)
+# Eq. (14) at birth: dchi/dz = -D / (a0 * tau)
+tau0_arr = np.array(tau0_l)
+D_birth = np.empty(ntraj)
+for t in range(ntraj):
+    D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
+agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
+
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
@@ -560,6 +573,8 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
             slope[idx[exits], j:] = np.nan
             zieb_iso[idx[exits], j:] = np.nan
             ziea_iso[idx[exits], j-1] = np.nan
+            agegrad[idx[exits], j:] = np.nan
+            gamma_mat[idx[exits], j:] = np.nan
             idx = idx[~exits]
             if idx.size == 0:
                 continue
@@ -577,19 +592,23 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         gi_j = Y[j]/QH[j]**2*H_ie[j]/dom_dzeta**3*fct_d2omega_dzeta2(zeta, j)
         gi_jb = Y[j-1]/QH[j-1]**2*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
         gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
-        gamma = c_gamma[idx]*gammaint[idx, j]
-        tau_j = qq * H_ie[j] / (dom_dzeta*QH[j]) * c_tr[idx] / (1+gamma)
-        tau[idx, j] = tau_j
-        # Trajectory and melting terms of Eq. (S2.25), reusing tau:
-        # (a0*tau - a*Omega)*Y/QH  -  (m*Q - a*Qm)*Y*(1-Omega)/QH^2
-        sl = (a0_arr[idx]*tau_j - a[j]*qq/Q[j]) * Y[j]/QH[j] \
-             - (m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
-        # Flow term
-        sl = sl - fct_domega_dx(zeta, j)
-        # Geometric term, conversion to real depth, firn terms
-        geom_term = -(1-zeta)*dHie_dx[j]
+        gam = c_gamma[idx]*gammaint[idx, j]
+        gamma_mat[idx, j] = gam
+        # Solid fraction at the trajectory point (needed for Eq. 14 and the slope)
         u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
         D = np.interp(u_dep, v_grid, D_col[j])
+        # Eq. (14): vertical age gradient (yr/m), defined for any sign of (1+gam)
+        agegrad_j = -D*(dom_dzeta*QH[j]/H_ie[j])*(1+gam) / (a0_arr[idx]*qq*c_tr[idx])
+        agegrad[idx, j] = agegrad_j
+        # Vertical thinning ratio: inversion of Eq. (14), valid for ordered
+        # stratigraphy (agegrad < 0). Diverges at the vertical tangent.
+        tau_j = -D / (a0_arr[idx]*agegrad_j)
+        tau[idx, j] = tau_j
+        # Layer slope (Eq. S2.25), reusing tau
+        sl = (a0_arr[idx]*tau_j - a[j]*qq/Q[j]) * Y[j]/QH[j] \
+             - (m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
+        sl = sl - fct_domega_dx(zeta, j)
+        geom_term = -(1-zeta)*dHie_dx[j]
         sl = (sl*H_ie[j]/dom_dzeta + geom_term) / D
         if not sf_single:
             sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
@@ -723,6 +742,8 @@ with np.errstate(divide='ignore', invalid='ignore'): #FIXME: is this ignore nece
 surf_steady_age = surf_extrap(steady_age)
 surf_tau        = surf_extrap(tau)
 surf_slope      = surf_extrap(slope)
+surf_agegrad = surf_extrap(agegrad)
+surf_budget = surf_extrap(1.+gamma_mat)
 
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 
