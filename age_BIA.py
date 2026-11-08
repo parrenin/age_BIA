@@ -44,6 +44,7 @@ fig_age_iso = [1000, 2000, 5000, 10000, 20000, 50000, 100000]
 step_traj = 5
 scaling_age = 10.
 fig_age_maxrange = None
+fig_agegrad_maxrange = None
 scaling_q = 10.
 ic = {}
 color_core = 'r'
@@ -769,12 +770,22 @@ else:
 linthresh = age_max/scaling_age
 norm_age = SymLogNorm(linthresh=linthresh, linscale=1, vmin=0., vmax=age_max)
 
-tau_max = max(np.nanmax(tau[t]) for t in traj_sel)
-norm_tau = Normalize(vmin=0., vmax=tau_max)
 
 budget_max = max(np.nanpercentile(1.+gamma_mat[t], 99.) for t in traj_sel)
 norm_budget = SymLogNorm(linthresh=1., linscale=1, vmin=-budget_max, vmax=budget_max)
 levels_budget = norm_budget.inverse(np.linspace(0., 1., 100))
+
+if fig_agegrad_maxrange is None:
+    # Auto range from the sampled trajectories
+    grad_max = max(np.nanpercentile(np.abs(agegrad[t]), 99.) for t in traj_sel)
+else:
+    grad_max = fig_agegrad_maxrange
+norm_grad = SymLogNorm(linthresh=grad_max/scaling_age, linscale=1,
+                       vmin=-grad_max, vmax=grad_max)
+levels_grad = norm_grad.inverse(np.linspace(0., 1., 100))
+
+tau_max = max(np.nanmax(tau[t]) for t in traj_sel)
+norm_tau = Normalize(vmin=0., vmax=tau_max)
 
 if fig_slope_maxrange is None:
     slope_min = min(np.nanmin(slope[t]) for t in traj_sel)
@@ -980,13 +991,13 @@ age_figure(True, 'age_x_depth')
 print('After age figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
-# order budget parameter
+# Order budget parameter
 # ---------------------------------------------------------
 
 def budget_figure(depthmode, fname):
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
                                    figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
-    top_accu(ax1, surf_budget, 'surf. order budget (1+$\\gamma$)')
+    top_accu(ax1, surf_budget, 'surf. order budget')
     bed_panel(ax2, depthmode)
     for sl in domain_slices:
         zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
@@ -1010,6 +1021,38 @@ def budget_figure(depthmode, fname):
 
 budget_figure(False, 'order_budget_x_z')
 budget_figure(True, 'order_budget_x_depth')
+
+# ---------------------------------------------------------
+# Vertical age gradient
+# ---------------------------------------------------------
+
+def agegrad_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    top_accu(ax1, surf_agegrad, 'surf. age gr. (yr/m)')
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, agegrad[sl], levels=levels_grad,
+                     cmap='PuOr', norm=norm_grad)
+        # Zero contour: vertical isochrone tangent (overturning diagnostic)
+        ax2.contour(Xmat[sl]/1000., zt, agegrad[sl], levels=[0.],
+                    colors='k', linewidths=2)
+    plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm_grad)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+    cb.set_label(label='vertical age gradient (yr/m)', size=18)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+agegrad_figure(False, 'age_gradient_x_z')
+agegrad_figure(True, 'age_gradient_x_depth')
 
 # ---------------------------------------------------------
 # 7-8. Thinning
