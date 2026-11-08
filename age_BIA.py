@@ -772,6 +772,10 @@ norm_age = SymLogNorm(linthresh=linthresh, linscale=1, vmin=0., vmax=age_max)
 tau_max = max(np.nanmax(tau[t]) for t in traj_sel)
 norm_tau = Normalize(vmin=0., vmax=tau_max)
 
+budget_max = max(np.nanpercentile(1.+gamma_mat[t], 99.) for t in traj_sel)
+norm_budget = SymLogNorm(linthresh=1., linscale=1, vmin=-budget_max, vmax=budget_max)
+levels_budget = norm_budget.inverse(np.linspace(0., 1., 100))
+
 if fig_slope_maxrange is None:
     slope_min = min(np.nanmin(slope[t]) for t in traj_sel)
     slope_max = max(np.nanmax(slope[t]) for t in traj_sel)
@@ -865,6 +869,8 @@ def plot_color_trajs(ax2, depthmode, tlist, norm):
         lc.set_array(aa/1000.)
         lc.set_linewidth(2)
         ax2.add_collection(lc)
+
+
 
 def plot_ic(ax2, depthmode):
     for name in ic:
@@ -972,6 +978,38 @@ def age_figure(depthmode, fname):
 age_figure(False, 'age_x_z')
 age_figure(True, 'age_x_depth')
 print('After age figures:', round(time.perf_counter()-START_TIME, 4), 's.')
+
+# ---------------------------------------------------------
+# order budget parameter
+# ---------------------------------------------------------
+
+def budget_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    top_accu(ax1, surf_budget, 'surf. order budget (1+$\\gamma$)')
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, 1.+gamma_mat[sl], levels=levels_budget,
+                     cmap='PuOr', norm=norm_budget)
+        # Zero contour: vertical isochrone tangent; negative: overturned
+        ax2.contour(Xmat[sl]/1000., zt, 1.+gamma_mat[sl], levels=[0.],
+                    colors='k', linewidths=2)
+    plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm_budget)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+    cb.set_label(label='order budget (1+$\\gamma$)', size=18)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+budget_figure(False, 'order_budget_x_z')
+budget_figure(True, 'order_budget_x_depth')
 
 # ---------------------------------------------------------
 # 7-8. Thinning
