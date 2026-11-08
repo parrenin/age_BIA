@@ -582,7 +582,7 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         gi_jb = Y[j-1]/QH[j-1]**2*qq*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
         gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
         gamma = c_gamma[idx]*gammaint[idx, j]
-        tau_j = qq/Q[j] / (dom_dzeta*QH[j]/Q[j]/H_ie[j]) * c_tr[idx] / (1+gamma)
+        tau_j = qq * H_ie[j] / (dom_dzeta*QH[j]) * c_tr[idx] / (1+gamma)
         tau[idx, j] = tau_j
         traj_term = (H_ie[j]/QH[j]/dom_dzeta*a0_arr[idx]*c_tr[idx]/(1+gamma) - a[j]/Q[j])
         sl = traj_term*Y[j]*qq
