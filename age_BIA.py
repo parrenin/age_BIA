@@ -538,7 +538,7 @@ QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr] # FIXME: should be rather ca
 domega1_i0 = fct_domega_dzeta(1., i0_arr)
 c_gamma = a[i0_arr] * domega1_i0 * QH0/H0 * q_arr/Q0
 c_tr = QH0/Q0/H0 * domega1_i0
-# Order budget at birth: gamma from the upstream initialization (Eq. S3.6),
+# Order factor at birth: gamma from the upstream initialization (Eq. S3.6),
 # zero for surface-born trajectories
 gamma_mat[rows, i0_arr] = c_gamma*np.array(gi0_l)
 # Eq. (14) at birth: dchi/dz = -D / (a0 * tau)
@@ -744,7 +744,7 @@ surf_steady_age = surf_extrap(steady_age)
 surf_tau        = surf_extrap(tau)
 surf_slope      = surf_extrap(slope)
 surf_agegrad = surf_extrap(agegrad)
-surf_budget = surf_extrap(1.+gamma_mat)
+surf_order_factor = surf_extrap(1.+gamma_mat)
 
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
 
@@ -771,9 +771,9 @@ linthresh = age_max/scaling_age
 norm_age = SymLogNorm(linthresh=linthresh, linscale=1, vmin=0., vmax=age_max)
 
 
-budget_max = max(np.nanpercentile(1.+gamma_mat[t], 99.) for t in traj_sel)
-norm_budget = SymLogNorm(linthresh=1., linscale=1, vmin=-budget_max, vmax=budget_max)
-levels_budget = norm_budget.inverse(np.linspace(0., 1., 100))
+order_max = max(np.nanpercentile(1.+gamma_mat[t], 99.) for t in traj_sel)
+norm_order = SymLogNorm(linthresh=1., linscale=1, vmin=-order_max, vmax=order_max)
+levels_order = norm_order.inverse(np.linspace(0., 1., 100))
 
 if fig_agegrad_maxrange is None:
     # Auto range from the sampled trajectories
@@ -991,18 +991,18 @@ age_figure(True, 'age_x_depth')
 print('After age figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
-# Order budget parameter
+# Order factor parameter
 # ---------------------------------------------------------
 
-def budget_figure(depthmode, fname):
+def order_factor_figure(depthmode, fname):
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
                                    figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
-    top_accu(ax1, surf_budget, 'surf. order budget')
+    top_accu(ax1, surf_order_factor, 'surf. order factor')
     bed_panel(ax2, depthmode)
     for sl in domain_slices:
         zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
-        ax2.contourf(Xmat[sl]/1000., zt, 1.+gamma_mat[sl], levels=levels_budget,
-                     cmap='PuOr', norm=norm_budget)
+        ax2.contourf(Xmat[sl]/1000., zt, 1.+gamma_mat[sl], levels=levels_order,
+                     cmap='PuOr', norm=norm_order)
         # Zero contour: vertical isochrone tangent; negative: overturned
         ax2.contour(Xmat[sl]/1000., zt, 1.+gamma_mat[sl], levels=[0.],
                     colors='k', linewidths=2)
@@ -1012,15 +1012,15 @@ def budget_figure(depthmode, fname):
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
     if depthmode:
         ax2.set_ylim(ax2.get_ylim()[::-1])
-    sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm_budget)
+    sm = plt.cm.ScalarMappable(cmap='PuOr', norm=norm_order)
     sm.set_array([])
     cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
-    cb.set_label(label='order budget (1+$\\gamma$)', size=18)
+    cb.set_label(label='order factor (1+$\\gamma$)', size=18)
     plot_ic(ax2, depthmode)
     savefig(fname)
 
-budget_figure(False, 'order_budget_x_z')
-budget_figure(True, 'order_budget_x_depth')
+order_factor_figure(False, 'order_factor_x_z')
+order_factor_figure(True, 'order_factor_x_depth')
 
 # ---------------------------------------------------------
 # Vertical age gradient
