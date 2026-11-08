@@ -580,18 +580,20 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         gamma = c_gamma[idx]*gammaint[idx, j]
         tau_j = qq * H_ie[j] / (dom_dzeta*QH[j]) * c_tr[idx] / (1+gamma)
         tau[idx, j] = tau_j
-        traj_term = (H_ie[j]/QH[j]/dom_dzeta*a0_arr[idx]*c_tr[idx]/(1+gamma) - a[j]/Q[j])
-        sl = traj_term*Y[j]*qq
-        melt_term = -(m[j]*Q[j]-a[j]*Qm[j])*Y[j]/QH[j]*(1-qq/Q[j])
-        sl = (sl + melt_term)/QH[j]
-        sl = (sl - fct_domega_dx(zeta, j))*H_ie[j]/dom_dzeta
+        # Trajectory and melting terms of Eq. (S2.25), reusing tau:
+        # (a0*tau - a*Omega)*Y/QH  -  (m*Q - a*Qm)*Y*(1-Omega)/QH^2
+        sl = (a0_arr[idx]*tau_j - a[j]*qq/Q[j]) * Y[j]/QH[j] \
+             - (m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
+        # Flow term
+        sl = sl - fct_domega_dx(zeta, j)
+        # Geometric term, conversion to real depth, firn terms
         geom_term = -(1-zeta)*dHie_dx[j]
         u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
         D = np.interp(u_dep, v_grid, D_col[j])
-        sl = (sl + geom_term)/D
+        sl = (sl*H_ie[j]/dom_dzeta + geom_term) / D
         if not sf_single:
             sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
-        sl = sl + dS_dx[j]  # FIXME: should be part of geom term
+        sl = sl + dS_dx[j]
         slope[idx, j] = sl
         if slope_diff:
             zieb_iso[idx, j] = z_ie[idx, j-1]-dage*tau[idx, j-1]*a0_arr[idx]
