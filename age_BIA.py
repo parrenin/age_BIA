@@ -478,7 +478,7 @@ zeta_arr = zg[(zg < 1.) & (zg > 0.)]
 if zeta_arr.size:
     omega = fct_omega(zeta_arr, i_b)
     qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
-    gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]*\
+    gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]/qq*\
           (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
     age0 = np.interp(zeta_arr, zeta_grid, age_grid)
     z_arr = B[i_b] + zeta_arr*H_ie[i_b]
@@ -532,7 +532,7 @@ zieb_iso[rows, i0_arr] = zieb0_l
 # Constants by trajectory
 QH0 = QH[i0_arr]; Q0 = Q[i0_arr]; H0 = H_ie[i0_arr] # FIXME: should be rather called Hie0, not H0
 domega1_i0 = fct_domega_dzeta(1., i0_arr)
-c_gamma = a[i0_arr] * domega1_i0 * QH0/Q0/H0
+c_gamma = a[i0_arr] * domega1_i0 * QH0/H0 * q_arr/Q0
 c_tr = QH0/Q0/H0 * domega1_i0
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
@@ -574,8 +574,8 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         kappa = Y[j]*H_ie[j]/QH[j]/dom_dzeta
         dage = (x[j]-x[j-1]) * np.sqrt(kappa*kappab)
         steady_age[idx, j] = steady_age[idx, j-1] + dage
-        gi_j = Y[j]/QH[j]**2*qq*H_ie[j]/dom_dzeta**3*fct_d2omega_dzeta2(zeta, j)
-        gi_jb = Y[j-1]/QH[j-1]**2*qq*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
+        gi_j = Y[j]/QH[j]**2*H_ie[j]/dom_dzeta**3*fct_d2omega_dzeta2(zeta, j)
+        gi_jb = Y[j-1]/QH[j-1]**2*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
         gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
         gamma = c_gamma[idx]*gammaint[idx, j]
         tau_j = qq * H_ie[j] / (dom_dzeta*QH[j]) * c_tr[idx] / (1+gamma)
