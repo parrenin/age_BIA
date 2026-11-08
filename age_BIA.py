@@ -149,10 +149,6 @@ def fct_domega_dx(zeta, i):
 
 def fct_zeta(omega, i):
     return np.interp(omega, tab_omega[:, i], zeta_grid)
-
-def fct_gamma_int(j, qq, zeta):
-    return Y[j]/QH[j]**2*qq*H_ie[j] / fct_domega_dzeta(zeta, j)**3 \
-        *fct_d2omega_dzeta2(zeta, j)
     
 
 
