@@ -519,6 +519,7 @@ z_ie = np.full((ntraj, len(x)), np.nan)
 steady_age = np.full((ntraj, len(x)), np.nan)
 gammaint = np.full((ntraj, len(x)), np.nan)
 tau = np.full((ntraj, len(x)), np.nan)
+invtau = np.full((ntraj, len(x)), np.nan)
 slope = np.full((ntraj, len(x)), np.nan)
 zieb_iso = np.full((ntraj, len(x)), np.nan)
 ziea_iso = np.full((ntraj, len(x)), np.nan)
@@ -598,12 +599,15 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         # Solid fraction at the trajectory point (needed for Eq. 14 and the slope)
         u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
         D = np.interp(u_dep, v_grid, D_col[j])
-        # Eq. (14): vertical age gradient (yr/m), defined for any sign of (1+gam)
-        agegrad_j = -D*(dom_dzeta*QH[j]/H_ie[j])*(1+gam) / (a0_arr[idx]*qq*c_tr[idx])
-        agegrad[idx, j] = agegrad_j
-        # Vertical thinning ratio: inversion of Eq. (14), valid for ordered
-        # stratigraphy (agegrad < 0). Diverges at the vertical tangent.
-        tau_j = -D / (a0_arr[idx]*agegrad_j)
+        # Inverse thinning ratio tau^-1: always defined (also for overturned
+        # stratigraphy), smooth everywhere. This is the dating kernel and the
+        # order Jacobian (Lipovsky, 2026) in flow tube coordinates.
+        invtau_j = (dom_dzeta*QH[j]/H_ie[j])*(1+gam)/(qq*c_tr[idx])
+        invtau[idx, j] = invtau_j
+        # Vertical age gradient (Eq. 14): local depositional normalization -D/a0
+        agegrad[idx, j] = -(D/a0_arr[idx])*invtau_j
+        # Classic vertical thinning ratio (convention of the literature)
+        tau_j = 1./invtau_j
         tau[idx, j] = tau_j
         # Layer slope (Eq. S2.25), reusing tau
         sl = (a0_arr[idx]*tau_j - a[j]*qq/Q[j]) * Y[j]/QH[j] \
