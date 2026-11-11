@@ -524,6 +524,7 @@ slope = np.full((ntraj, len(x)), np.nan)
 zieb_iso = np.full((ntraj, len(x)), np.nan)
 ziea_iso = np.full((ntraj, len(x)), np.nan)
 agegrad = np.full((ntraj, len(x)), np.nan)
+agegrad_x = np.full((ntraj, len(x)), np.nan)
 gamma_mat = np.full((ntraj, len(x)), np.nan)
 
 rows = np.arange(ntraj)
@@ -548,7 +549,10 @@ D_birth = np.empty(ntraj)
 for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
-
+# At birth: chi_x = kappa_x - chi_z * (trajectory slope at birth)
+# Surface-born trajectories leave along the surface -> dS/dx
+kappa0 = Y[i0_arr]*H_ie[i0_arr]/(QH[i0_arr]*domega1_i0)
+agegrad_x[rows, i0_arr] = kappa0 - agegrad[rows, i0_arr]*dS_dx[i0_arr]
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
@@ -596,29 +600,32 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
         gam = c_gamma[idx]*gammaint[idx, j]
         gamma_mat[idx, j] = gam
-        # Solid fraction at the trajectory point (needed for Eq. 14 and the slope)
-        u_dep = S_ie[j] - z_ie[idx, j]        # depth ie
+        u_dep = S_ie[j] - z_ie[idx, j]
         D = np.interp(u_dep, v_grid, D_col[j])
-        # Inverse thinning ratio tau^-1: always defined (also for overturned
-        # stratigraphy), smooth everywhere. This is the dating kernel and the
-        # order Jacobian (Lipovsky, 2026) in flow tube coordinates.
+        # Inverse thinning ratio (always defined)
         invtau_j = (dom_dzeta*QH[j]/H_ie[j])*(1+gam)/(qq*c_tr[idx])
         invtau[idx, j] = invtau_j
-        # Vertical age gradient (Eq. 14): local depositional normalization -D/a0
-        agegrad[idx, j] = -(D/a0_arr[idx])*invtau_j
-        # Classic vertical thinning ratio (convention of the literature)
+        # Vertical age gradient (Eq. 14): chi_z = -(D/a0) * tau^-1
+        agegrad_j = -(D/a0_arr[idx])*invtau_j        # <-- la définition manquante
+        agegrad[idx, j] = agegrad_j
+        # Vertical thinning ratio
         tau_j = 1./invtau_j
         tau[idx, j] = tau_j
-        # Layer slope (Eq. S2.25), reusing tau
-        sl = (a0_arr[idx]*tau_j - a[j]*qq/Q[j]) * Y[j]/QH[j] \
-             - (m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
-        sl = sl - fct_domega_dx(zeta, j)
-        geom_term = -(1-zeta)*dHie_dx[j]
-        sl = (sl*H_ie[j]/dom_dzeta + geom_term) / D
+        # --- finite parts of the isochrone orientation ---
+        # Accumulation term: T2 = -(a Y^S Omega / Q) (dOmega/dz)^-1
+        T2 = -(a[j]*qq*Y[j]*H_ie[j]) / (Q[j]*QH[j]*D*dom_dzeta)
+        # iso-Omega slope: T3 = (dz/dx)|_Omega (melting, flow, geometric, firn)
+        T3 = (-(m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
+              - fct_domega_dx(zeta, j)) * H_ie[j]/(dom_dzeta*D) \
+             + (-(1-zeta)*dHie_dx[j]) / D
         if not sf_single:
-            sl = sl - np.interp(u_dep, v_grid, TIE[j])   # term ∫ d(1/D)/dx
-        sl = sl + dS_dx[j]
-        slope[idx, j] = sl
+            T3 = T3 - np.interp(u_dep, v_grid, TIE[j])
+        T3 = T3 + dS_dx[j]
+        # --- layer slope: singular at vertical tangents (tau -> inf)
+        slope[idx, j] = kappa*a0_arr[idx]*tau_j/D + T2 + T3
+        # --- horizontal age gradient: everywhere defined (the (1+gamma)
+        # factors cancel: -chi_z * (kappa a0 tau / D) = kappa)
+        agegrad_x[idx, j] = kappa - agegrad_j*T2 - agegrad_j*T3
         if slope_diff:
             zieb_iso[idx, j] = z_ie[idx, j-1]-dage*tau[idx, j-1]*a0_arr[idx]
             zia = z_ie[idx, j]+dage*tau_j*a0_arr[idx]
