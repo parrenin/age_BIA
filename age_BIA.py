@@ -65,6 +65,7 @@ x_grid = {}
 z_grid = {}
 fig_slope_maxrange = None
 fig_dip_maxrange = None
+fig_ic_dip = False
 nb_zeta = 1001
 solid_fraction_profiles = None
 dzie_D = 1.0
@@ -1308,17 +1309,30 @@ for name in ic:
     ax3.set_xlim(left=0)
 
     ax4 = ax.twiny()
-    for i in range(len(prof_domains)-1):
-        if slope_diff:
-            ax4.plot(in_window(np.degrees(np.arctan(pc['slope_diff'])))[prof_domains[i]:prof_domains[i+1]],
-                     pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet', linestyle='dotted')
-        ax4.plot(in_window(pc['dip'])[prof_domains[i]:prof_domains[i+1]],
-                 pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
-    if ic[name]['comp'] is not None:
-        # Comparison dip converted from the imported slope
-        ax4.plot(np.degrees(np.arctan(ic[name]['cp_slope'])),
-                 S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
-    ax4.set_xlabel('layer dip (°)', color='violet', fontsize=15)
+    if fig_ic_dip:
+        for i in range(len(prof_domains)-1):
+            if slope_diff:
+                ax4.plot(in_window(np.degrees(np.arctan(pc['slope_diff'])))[prof_domains[i]:prof_domains[i+1]],
+                         pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet', linestyle='dotted')
+            ax4.plot(in_window(pc['dip'])[prof_domains[i]:prof_domains[i+1]],
+                     pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
+        if ic[name]['comp'] is not None:
+            # Comparison dip converted from the imported slope
+            ax4.plot(np.degrees(np.arctan(ic[name]['cp_slope'])),
+                     S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
+        ax4.set_xlabel('layer dip (°)', color='violet', fontsize=15)
+    else:
+        for i in range(len(prof_domains)-1):
+            if slope_diff:
+                ax4.plot(in_window(pc['slope_diff'])[prof_domains[i]:prof_domains[i+1]],
+                         pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet', linestyle='dotted')
+            ax4.plot(in_window(pc['slope'])[prof_domains[i]:prof_domains[i+1]],
+                     pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
+        if ic[name]['comp'] is not None:
+            # Comparison slope: imported as such, no conversion needed
+            ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'],
+                     color='violet', linestyle='--')
+        ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
     ax4.spines['top'].set_color('violet')
     ax4.spines['top'].set_position(('axes', 1.2))
     ax4.tick_params(axis='x', colors='violet')
