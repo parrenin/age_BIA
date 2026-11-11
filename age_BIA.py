@@ -8,6 +8,7 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TODO: Check why slope converges slowly at DC for the DC-BELDC flow line (even for age_flow_line)
 # TODO: test case for a dome and check isochrones near the dome
+# TODO: agegrad is singular at accu/ablation transitions. Can we do better?
 
 import sys
 import numpy as np
@@ -63,6 +64,7 @@ slope_diff = False
 x_grid = {}
 z_grid = {}
 fig_slope_maxrange = None
+fig_dip_maxrange = None
 nb_zeta = 1001
 solid_fraction_profiles = None
 dzie_D = 1.0
@@ -550,11 +552,13 @@ for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 # Initialization of the horizontal age gradient
-kappa0 = Y[i0_arr]*H_ie[i0_arr]/(QH[i0_arr]*domega1_i0)
-# Surface-born: the trajectory leaves along the surface
-agegrad_x[rows, i0_arr] = kappa0 - agegrad[rows, i0_arr]*dS_dx[i0_arr]
-# Upstream-born: value from the virtual upstream extension (S3).
-# Reduces to zero when m = 0 (or melt equilibrium mu = m/(a-m)).
+# Surface-born: the age-0 isochrone at the surface IS the surface itself,
+# so chi_x = -chi_z * dS/dx (level-set identity). Equivalently, from the
+# trajectory decomposition: the trajectory leaves the surface with the slope
+# dS/dx - a*kappa_x/D (kinematic free-surface condition), and
+# chi_x = kappa_x*(1 - a/a0) - chi_z*dS/dx, which reduces to -chi_z*dS/dx
+# at birth where a = a0.
+agegrad_x[rows, i0_arr] = -agegrad[rows, i0_arr]*dS_dx[i0_arr]
 up = (in_arr == 'upstream')
 if up.any():
     kappa_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*fct_domega_dzeta(zeta_arr, i_b))
@@ -567,6 +571,7 @@ print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4)
 # ---------------------------------------------
 # Follow-up of trajectories, batch by column
 # ---------------------------------------------
+
 with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need these ignores?
     for j in range(1, len(x)):
         entered = i0_arr <= j-1
@@ -658,6 +663,16 @@ else:
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
 Xmat = np.where(np.isnan(z_ie), np.nan, x)
 Qmat = np.where(np.isnan(z_ie), np.nan, q_arr[:, None])
+# Layer dip (degrees), from the age gradient pair (always defined).
+# The tangent direction is taken as (-chi_z, chi_x) — the same line as
+# (chi_z, -chi_x) — so that ordered stratigraphy reads the conventional
+# dip in (-90, 90) deg directly, with no folding. The angle is continuous
+# through vertical tangents (+/-90 deg); it only branches at +/-180 deg
+# (horizontal overturned layers), where a future per-trajectory
+# unwrapping would make it a continuous rotation angle.
+dip = np.degrees(np.arctan2(agegrad_x, -agegrad))
+# Critical point of the age field (both gradients zero): direction undefined
+dip = np.where((agegrad == 0.) & (agegrad_x == 0.), np.nan, dip)
 if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
@@ -694,6 +709,7 @@ def prof_col(ii):
     pc['steady_age'] = steady_age[sel, ii]
     pc['tau'] = tau[sel, ii]
     pc['slope'] = slope[sel, ii]
+    pc['dip'] = dip[sel, ii]
     pc['x0'] = x0_arr[sel]
     pc['a0'] = a0_arr[sel]
     pc['i0'] = i0_arr[sel]
@@ -758,10 +774,20 @@ with np.errstate(divide='ignore', invalid='ignore'): #FIXME: is this ignore nece
         y1, y2 = Y[top, cols], Y[top2, cols]
         return np.where(ok, y1 + tfrac*(y1-y2), np.nan)
 
+def surf_nearest(Y):
+    # Surface value = value of the topmost alive trajectory: the newborn
+    # (exactly at the surface) in accumulation areas, the emerging one
+    # (just below the surface) in ablation areas. No extrapolation: avoids
+    # the tfrac blow-up where the top two trajectories are nearly
+    # coincident (near the accu/ablation transition, where a0 -> 0 keeps
+    # the newborns at the surface).
+    return np.where(alive.any(axis=0), Y[top, cols], np.nan)
+
 surf_steady_age = surf_extrap(steady_age)
 surf_tau        = surf_extrap(tau)
 surf_slope      = surf_extrap(slope)
-surf_agegrad = surf_extrap(agegrad)
+surf_dip = np.degrees(np.atan(surf_slope)) # The gradients have singularities at surface, so better use this.
+surf_agegrad = surf_nearest(agegrad)
 surf_order_factor = surf_extrap(1.+gamma_mat)
 
 surf_age = np.interp(surf_steady_age, steady_age_R, age_R)
@@ -812,6 +838,15 @@ if fig_slope_maxrange is None:
 else:
     slope_max = fig_slope_maxrange
 levels_slope = np.arange(-slope_max, slope_max+0.000001, slope_max/50)
+
+
+if fig_dip_maxrange is None:
+    # Auto range from the sampled trajectories. The dip is bounded by
+    # +/-90 deg, but gentle cases (e.g. DC-BELDC) deserve a finer scale.
+    dip_max = max(np.nanmax(np.abs(dip[t])) for t in traj_sel)
+else:
+    dip_max = fig_dip_maxrange
+levels_dip = np.arange(-dip_max, dip_max+1e-6, dip_max/25.)
 
 for name in ic:
     ic[name]['XX'] = ic[name]['x'] * np.ones(2)
@@ -1110,8 +1145,9 @@ thinning_figure(False, 'thinning_x_z')
 thinning_figure(True, 'thinning_x_depth')
 print('After thinning figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
+
 # ---------------------------------------------------------
-# 9-10. Slope
+# Layer slope
 # ---------------------------------------------------------
 
 def slope_figure(depthmode, fname):
@@ -1122,7 +1158,7 @@ def slope_figure(depthmode, fname):
     for sl in domain_slices:
         zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
         cp = ax2.contourf(Xmat[sl]/1000., zt, slope[sl],
-                          levels=levels_slope, cmap='PuOr')
+                          levels=levels_dip, cmap='PuOr')
     plot_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
@@ -1133,9 +1169,38 @@ def slope_figure(depthmode, fname):
     plot_ic(ax2, depthmode)
     savefig(fname)
 
-slope_figure(False, 'slope_x_z')
-slope_figure(True, 'slope_x_depth')
-print('After slope figures:', round(time.perf_counter()-START_TIME, 4), 's.')
+slope_figure(False, 'layer_dip_x_z')
+slope_figure(True, 'layer_dip_x_depth')
+
+
+
+# ---------------------------------------------------------
+# Layer dip
+# ---------------------------------------------------------
+
+def dip_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    top_accu(ax1, surf_dip, 'surf. layer dip (°)')
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        cp = ax2.contourf(Xmat[sl]/1000., zt, dip[sl],
+                          levels=levels_dip, cmap='PuOr')
+    plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    cb = plt.colorbar(cp, pad=-0.06)
+    cb.set_label(label='layer dip (°)', size=18)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+dip_figure(False, 'layer_dip_x_z')
+dip_figure(True, 'layer_dip_x_depth')
+print('After layer dip figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 
 # ---------------------------------------------------------
@@ -1245,13 +1310,15 @@ for name in ic:
     ax4 = ax.twiny()
     for i in range(len(prof_domains)-1):
         if slope_diff:
-            ax4.plot(in_window(pc['slope_diff'])[prof_domains[i]:prof_domains[i+1]],
+            ax4.plot(in_window(np.degrees(np.arctan(pc['slope_diff'])))[prof_domains[i]:prof_domains[i+1]],
                      pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet', linestyle='dotted')
-        ax4.plot(in_window(pc['slope'])[prof_domains[i]:prof_domains[i+1]],
+        ax4.plot(in_window(pc['dip'])[prof_domains[i]:prof_domains[i+1]],
                  pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
     if ic[name]['comp'] is not None:
-        ax4.plot(ic[name]['cp_slope'], S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
-    ax4.set_xlabel('layer slope (no unit)', color='violet', fontsize=15)
+        # Comparison dip converted from the imported slope
+        ax4.plot(np.degrees(np.arctan(ic[name]['cp_slope'])),
+                 S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
+    ax4.set_xlabel('layer dip (°)', color='violet', fontsize=15)
     ax4.spines['top'].set_color('violet')
     ax4.spines['top'].set_position(('axes', 1.2))
     ax4.tick_params(axis='x', colors='violet')
@@ -1285,12 +1352,13 @@ if output_fl:
 for name in ic:
     ii = np.argmin(np.abs(x/1000. - ic[name]['x']))
     pc = prof_col(ii)
-    output = np.vstack((S[ii]-pc['z'], pc['age'], pc['x0'], pc['tau'], pc['a0']))
+    output = np.vstack((S[ii]-pc['z'], pc['age'], pc['x0'], pc['tau'],
+                        pc['a0'], pc['dip']))
     prof_domains = pc['unconf']
     for i in range(len(prof_domains)):
         output = np.insert(output, prof_domains[i]+i, np.nan, axis=1)
     np.savetxt(datadir+name+'_ice_core_output.txt', np.transpose(output)[::-1],
-               header='depth(m) age(yr) origin(km) thinning accu(m/yr')
+               header='depth(m) age(yr) origin(km) thinning accu(m/yr) dip(deg)')
 
 # ---------------------------------------------------------
 # Isochrones output
