@@ -549,10 +549,18 @@ D_birth = np.empty(ntraj)
 for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
-# At birth: chi_x = kappa_x - chi_z * (trajectory slope at birth)
-# Surface-born trajectories leave along the surface -> dS/dx
+# Initialization of the horizontal age gradient
 kappa0 = Y[i0_arr]*H_ie[i0_arr]/(QH[i0_arr]*domega1_i0)
+# Surface-born: the trajectory leaves along the surface
 agegrad_x[rows, i0_arr] = kappa0 - agegrad[rows, i0_arr]*dS_dx[i0_arr]
+# Upstream-born: value from the virtual upstream extension (S3).
+# Reduces to zero when m = 0 (or melt equilibrium mu = m/(a-m)).
+up = (in_arr == 'upstream')
+if up.any():
+    kappa_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*fct_domega_dzeta(zeta_arr, i_b))
+    agegrad_x[up, i_b] = kappa_b*(1.-omega) \
+        * (a[i_b]*mu_b - m[i_b]*(1.+mu_b)) / (a[i_b]*(omega+mu_b))
+
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
