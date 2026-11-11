@@ -558,9 +558,8 @@ agegrad_x[rows, i0_arr] = kappa0 - agegrad[rows, i0_arr]*dS_dx[i0_arr]
 up = (in_arr == 'upstream')
 if up.any():
     kappa_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*fct_domega_dzeta(zeta_arr, i_b))
-    agegrad_x[up, i_b] = kappa_b*(1.-omega) \
-        * (a[i_b]*mu_b - m[i_b]*(1.+mu_b)) / (a[i_b]*(omega+mu_b))
-
+    agegrad_x[up, i_b] = kappa_b*(1. - (1.+mu_b)*((a[i_b]-m[i_b])*omega + m[i_b])
+                             / (a[i_b]*(omega+mu_b)))
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
