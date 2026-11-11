@@ -8,7 +8,7 @@ Ceci est un script temporaire.
 # TODO: exact formula for the age increase
 # TODO: Check why slope converges slowly at DC for the DC-BELDC flow line (even for age_flow_line)
 # TODO: test case for a dome and check isochrones near the dome
-# TODO: agegrad is singular at accu/ablation transitions. Can we do better?
+# TODO: dip is singular at accu/ablation transitions. Can we do better?
 
 import sys
 import numpy as np
