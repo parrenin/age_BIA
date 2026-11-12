@@ -554,7 +554,8 @@ tau0_arr = np.array(tau0_l)
 D_birth = np.empty(ntraj)
 for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
-agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
+with np.errstate(invalid='ignore', divide='ignore'):
+    agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 invtau[rows, i0_arr] = 1/tau[rows, i0_arr]
 # Initialization of the horizontal age gradient
 # Eq. (17) evaluated at the nodes where the trajectories enter the domain,
@@ -566,7 +567,8 @@ invtau[rows, i0_arr] = 1/tau[rows, i0_arr]
 # accumulation term (a = a0), leaving the level-set identity
 # chi_x = -chi_z * dS/dx (the age-0 isochrone at the surface is the surface).
 invtau_x[rows, i0_arr] = dS_dx[i0_arr]
-agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
+with np.errstate(invalid='ignore', divide='ignore'):
+    agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
 dip[rows, i0_arr] = np.degrees(np.arctan2(invtau_x[rows, i0_arr], 1./tau0_arr))
 
 # Upstream-born (entry node = upstream boundary): the full Eq. (17) with the
@@ -596,7 +598,7 @@ print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4)
 # Follow-up of trajectories, batch by column
 # ---------------------------------------------
 
-with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need these ignores?
+with np.errstate(invalid='ignore', divide='ignore'): 
     for j in range(1, len(x)):
         entered = i0_arr <= j-1
         alive = entered & ~np.isnan(z_ie[:, j-1])
@@ -802,7 +804,7 @@ z1, z2 = Zmat[top, cols], Zmat[top2, cols]
 dz = z1 - z2
 ok &= dz != 0
 
-with np.errstate(divide='ignore', invalid='ignore'): #FIXME: is this ignore necessary?
+with np.errstate(divide='ignore', invalid='ignore'): 
     tfrac = np.where(ok, (S - z1)/np.where(dz == 0., 1., dz), 0.)
     def surf_extrap(Y):
         y1, y2 = Y[top, cols], Y[top2, cols]
