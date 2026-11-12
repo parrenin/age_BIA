@@ -523,7 +523,9 @@ steady_age = np.full((ntraj, len(x)), np.nan)
 gammaint = np.full((ntraj, len(x)), np.nan)
 tau = np.full((ntraj, len(x)), np.nan)
 invtau = np.full((ntraj, len(x)), np.nan)
+invtau_x = np.full((ntraj, len(x)), np.nan)
 slope = np.full((ntraj, len(x)), np.nan)
+dip = np.full((ntraj, len(x)), np.nan)
 zieb_iso = np.full((ntraj, len(x)), np.nan)
 ziea_iso = np.full((ntraj, len(x)), np.nan)
 agegrad = np.full((ntraj, len(x)), np.nan)
@@ -561,7 +563,8 @@ agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 # flow, geometric and firn terms vanish, and kappa_x cancels with the
 # accumulation term (a = a0), leaving the level-set identity
 # chi_x = -chi_z * dS/dx (the age-0 isochrone at the surface is the surface).
-agegrad_x[rows, i0_arr] = -agegrad[rows, i0_arr]*dS_dx[i0_arr]
+invtau_x[rows, i0_arr] = dS_dx[i0_arr]
+agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
 
 # Upstream-born (entry node = upstream boundary): the full Eq. (17) with the
 # local derivatives at i_b, as the batch would compute it there.
@@ -578,7 +581,10 @@ if up.any():
         u_dep_b = S_ie[i_b] - z_arr
         T3_b = T3_b - np.interp(u_dep_b, v_grid, TIE[i_b])
     T3_b = T3_b + dS_dx[i_b]
-    agegrad_x[up, i_b] = kap_b - agegrad[up, i_b]*T2_b - agegrad[up, i_b]*T3_b
+    invtau_x_b = a0_arr[up]*kap_b/D_b + (1./tau0_arr[up])*(T2_b + T3_b)
+    invtau_x[up, i_b] = invtau_x_b
+    agegrad_x[up, i_b] = invtau_x_b*D_b/a0_arr[up]
+    dip[up, i_b] = np.degrees(np.arctan2(invtau_x_b, 1./tau0_arr[up]))
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
@@ -652,7 +658,20 @@ with np.errstate(invalid='ignore', divide='ignore'): # FIXME: do we really need 
         slope[idx, j] = kappa*a0_arr[idx]*tau_j/D + T2 + T3
         # --- horizontal age gradient: everywhere defined (the (1+gamma)
         # factors cancel: -chi_z * (kappa a0 tau / D) = kappa)
-        agegrad_x[idx, j] = kappa - agegrad_j*T2 - agegrad_j*T3
+        # --- rescaled horizontal age gradient (primary, no singularity):
+        #     tau_x = (a0/D) * chi_x = (a0/D) kappa + tau^-1 * (T2 + T3)
+        invtau_x_j = a0_arr[idx]*kappa/D + invtau_j*(T2 + T3)
+        invtau_x[idx, j] = invtau_x_j
+        # Horizontal age gradient (Eq. 17): chi_x = (D/a0) * tau_x.
+        # Singular when a0 -> 0, but that is the physical chi_x.
+        agegrad_x[idx, j] = invtau_x_j*D/a0_arr[idx]
+        # --- layer dip (degrees), from the rescaled age gradient vector,
+        # unwrapped along the trajectory for angle continuity:
+        dip_new = np.degrees(np.arctan2(invtau_x_j, invtau_j))
+        prev = dip[idx, j-1]
+        delta = dip_new - prev
+        delta = delta - 360.*np.round(delta/360.)
+        dip[idx, j] = np.where(np.isnan(prev), dip_new, prev + delta)
         if slope_diff:
             zieb_iso[idx, j] = z_ie[idx, j-1]-dage*tau[idx, j-1]*a0_arr[idx]
             zia = z_ie[idx, j]+dage*tau_j*a0_arr[idx]
