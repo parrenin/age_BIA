@@ -47,6 +47,8 @@ scaling_age = 10.
 fig_age_maxrange = None
 fig_agegrad_maxrange = None
 fig_invtau_maxrange = None
+fig_slope_maxrange = None
+fig_dip_maxrange = None
 scaling_q = 10.
 ic = {}
 color_core = 'r'
@@ -64,9 +66,8 @@ output_fl = False
 slope_diff = False
 x_grid = {}
 z_grid = {}
-fig_slope_maxrange = None
-fig_dip_maxrange = None
 fig_ic_dip = False
+fig_ic_thinning = 'thinning'
 nb_zeta = 1001
 solid_fraction_profiles = None
 dzie_D = 1.0
@@ -255,10 +256,23 @@ for name in ic:
     if ic[name]['comp'] is not None:
         df = pd.read_csv(datadir+ic[name]['comp'], sep=None, comment='#', engine='python')
         ic[name]['cp_depth'] = df['depth'].to_numpy(dtype=float)
-        ic[name]['cp_age'] = df['age'].to_numpy(dtype=float)
-        ic[name]['cp_x'] = df['x_origin'].to_numpy(dtype=float)
-        ic[name]['cp_tau'] = df['thinning'].to_numpy(dtype=float)
-        ic[name]['cp_slope'] = df['slope'].to_numpy(dtype=float)
+        for opt_col in ('age', 'x', 'tau', 'slope', 'agegrad', 'invtau', 'dip'):
+            if opt_col in df.columns:
+                ic[name]['cp_'+opt_col] = df[opt_col].to_numpy()
+            else:
+                ic[name]['cp_'+opt_col] = np.full_like(ic[name]['cp_depth'], np.nan)
+        if 'tau' in df.columns and 'invtau' not in df.columns:
+            with np.errstate(divide='ignore'):
+                ic[name]['cp_invtau'] = 1/ic[name]['cp_tau']
+        if 'invtau' in df.columns and 'tau' not in df.columns:
+            with np.errstate(divide='ignore'):
+                ic[name]['cp_tau'] = 1/ic[name]['cp_invtau']
+        if 'slope' in df.columns and 'dip' not in df.columns:
+            ic[name]['cp_dip'] = np.degrees(np.arctan(ic[name]['cp_slope']))
+        if 'dip' in df.columns and 'slope' not in df.columns:
+            with np.errstate(divide='ignore'):
+                ic[name]['cp_slope'] = np.degrees(np.tan(ic[name]['cp_dip']))
+        
 
 # -----------------------------------------------------------
 # Reading of comparison files for surface velocity and age
@@ -744,6 +758,8 @@ def prof_col(ii):
     pc['z_ie'] = z_ie[sel, ii]
     pc['steady_age'] = steady_age[sel, ii]
     pc['tau'] = tau[sel, ii]
+    pc['invtau'] = invtau[sel, ii]
+    pc['agegrad'] = agegrad[sel, ii]
     pc['slope'] = slope[sel, ii]
     pc['dip'] = dip[sel, ii]
     pc['x0'] = x0_arr[sel]
@@ -1381,12 +1397,43 @@ for name in ic:
     ax2.spines['bottom'].set_visible(False)
 
     ax3 = ax.twiny()
+    # Vertical thinning axis: tau (default), its inverse tau^-1 (primary,
+    # singularity-free quantity), or the vertical age gradient. The
+    # comparison curves from age_flow_line are converted accordingly.
+    if fig_ic_thinning == 'invthinning':
+        yval = pc['invtau']
+        xlabel = 'inverse vertical thinning ratio (no unit)'
+    elif fig_ic_thinning == 'agegrad':
+        yval = -pc['agegrad']      # age density (positive in ordered regime)
+        xlabel = 'age density (yr/m)'
+    else:
+        yval = pc['tau']
+        xlabel = 'vertical thinning ratio (no unit)'
     for i in range(len(prof_domains)-1):
-        ax3.plot(pc['tau'][prof_domains[i]:prof_domains[i+1]],
+        ax3.plot(yval[prof_domains[i]:prof_domains[i+1]],
                  pc['z'][prof_domains[i]:prof_domains[i+1]], color='orange')
     if ic[name]['comp'] is not None:
-        ax3.plot(ic[name]['cp_tau'], S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
-    ax3.set_xlabel('vertical thinning ratio (no unit)', color='orange', fontsize=15)
+        # The imported file contains the thinning ratio: convert it to
+        # the plotted quantity when needed.
+        if fig_ic_thinning == 'invthinning':
+            cp_yval = ic[name]['cp_invtau']
+        elif fig_ic_thinning == 'agegrad':
+            cp_yval = ic[name]['cp_agegrad']
+        else:
+            cp_yval = ic[name]['cp_tau']
+        ax3.plot(cp_yval, S[ii]-ic[name]['cp_depth'], color='orange', linestyle='--')
+    if fig_ic_thinning == 'invthinning':
+        ax3.set_xscale('symlog', linthresh=1., linscale=1.)
+    elif fig_ic_thinning == 'agegrad':
+        finite = yval[np.isfinite(yval)]
+        if finite.size and finite[-1] > 0.:
+            linthresh = finite[-1]*10
+        else:
+            linthresh = 1.
+        ax3.set_xscale('symlog', linthresh=linthresh, linscale=1.)
+    ax3.set_xlim(left=0)
+    
+    ax3.set_xlabel(xlabel, color='orange', fontsize=15)
     ax3.spines['top'].set_color('orange')
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
@@ -1402,7 +1449,7 @@ for name in ic:
                      pc['z'][prof_domains[i]:prof_domains[i+1]], color='violet')
         if ic[name]['comp'] is not None:
             # Comparison dip converted from the imported slope
-            ax4.plot(np.degrees(np.arctan(ic[name]['cp_slope'])),
+            ax4.plot(ic[name]['cp_dip'],
                      S[ii]-ic[name]['cp_depth'], color='violet', linestyle='--')
         ax4.set_xlabel('layer dip (°)', color='violet', fontsize=15)
     else:

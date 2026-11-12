@@ -24,6 +24,8 @@ output_fl: True
 comp_surf_vel: 'surf_velocity_age_flow_line.txt'
 fig_slope_maxrange: 0.5
 fig_age_maxrange: 2000.
+fig_ic_thinning: 'agegrad'
+fig_ic_dip: True
 ic:
     "EDC":
         "x": 6.3  # X coordinate of the drilling, in km
