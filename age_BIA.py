@@ -46,6 +46,7 @@ step_traj = 5
 scaling_age = 10.
 fig_age_maxrange = None
 fig_agegrad_maxrange = None
+fig_invtau_maxrange = None
 scaling_q = 10.
 ic = {}
 color_core = 'r'
@@ -554,6 +555,7 @@ D_birth = np.empty(ntraj)
 for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
+invtau[rows, i0_arr] = 1/tau[rows, i0_arr]
 # Initialization of the horizontal age gradient
 # Eq. (17) evaluated at the nodes where the trajectories enter the domain,
 # with the LOCAL derivatives -- the same formula as the batch, so that the
@@ -817,6 +819,7 @@ def surf_nearest(Y):
 
 surf_steady_age = surf_extrap(steady_age)
 surf_tau        = surf_extrap(tau)
+surf_invtau = surf_extrap(invtau)
 surf_slope      = surf_extrap(slope)
 surf_dip = surf_extrap(dip)
 surf_agegrad = surf_nearest(agegrad)
@@ -862,6 +865,18 @@ levels_grad = norm_grad.inverse(np.linspace(0., 1., 100))
 
 tau_max = max(np.nanmax(tau[t]) for t in traj_sel)
 norm_tau = Normalize(vmin=0., vmax=tau_max)
+
+# Range for the inverse thinning ratio: cap the upper end (near the bed,
+# tau -> 0 makes invtau -> large), either manually or at the 99th
+# percentile of the sampled trajectories.
+if fig_invtau_maxrange is None:
+    invtau_max = max(np.nanpercentile(invtau[t], 99.) for t in traj_sel)
+else:
+    invtau_max = fig_invtau_maxrange
+# Linear between 0 and 1 (where the physics of the transition
+# thinning/expansion lives), logarithmic above.
+norm_invtau = SymLogNorm(linthresh=1., linscale=1, vmin=0., vmax=invtau_max)
+levels_invtau = norm_invtau.inverse(np.linspace(0., 1., 100))
 
 if fig_slope_maxrange is None:
     slope_min = min(np.nanmin(slope[t]) for t in traj_sel)
@@ -1176,6 +1191,42 @@ def thinning_figure(depthmode, fname):
 thinning_figure(False, 'thinning_x_z')
 thinning_figure(True, 'thinning_x_depth')
 print('After thinning figures:', round(time.perf_counter()-START_TIME, 4), 's.')
+
+# ---------------------------------------------------------
+# 7b-8b. Inverse vertical thinning ratio
+# ---------------------------------------------------------
+
+def invtau_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    top_accu(ax1, surf_invtau, 'surface inverse thinning ratio',
+             ylim_fix=lambda b, t: (min(b, 0.), max(t, 2.)))
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, invtau[sl], levels=levels_invtau,
+                     cmap='plasma_r', norm=norm_invtau)
+        # Key contours: invtau = 1 (thinning/expansion transition),
+        # invtau = 0 (vertical isochrone tangent, i.e. 1+gamma = 0)
+        cp = ax2.contour(Xmat[sl]/1000., zt, invtau[sl],
+                         levels=[0., 1.], colors='k', norm=norm_invtau)
+    plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    sm = plt.cm.ScalarMappable(cmap='plasma_r', norm=norm_invtau)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+    cb.set_label(label='inverse vertical thinning ratio (no unit)', size=18)
+    cb.add_lines(cp)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+invtau_figure(False, 'inv_thinning_x_z')
+invtau_figure(True, 'inv_thinning_x_depth')
+print('After inverse thinning figures:', round(time.perf_counter()-START_TIME, 4), ' s.')
 
 
 # ---------------------------------------------------------
