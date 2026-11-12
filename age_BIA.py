@@ -553,18 +553,32 @@ for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 # Initialization of the horizontal age gradient
-# Surface-born: the age-0 isochrone at the surface IS the surface itself,
-# so chi_x = -chi_z * dS/dx (level-set identity). Equivalently, from the
-# trajectory decomposition: the trajectory leaves the surface with the slope
-# dS/dx - a*kappa_x/D (kinematic free-surface condition), and
-# chi_x = kappa_x*(1 - a/a0) - chi_z*dS/dx, which reduces to -chi_z*dS/dx
-# at birth where a = a0.
+# Eq. (17) evaluated at the nodes where the trajectories enter the domain,
+# with the LOCAL derivatives -- the same formula as the batch, so that the
+# stored field is continuous across the boundary.
+
+# Surface-born (entry node = birth node, at the surface): at zeta=1 the melt,
+# flow, geometric and firn terms vanish, and kappa_x cancels with the
+# accumulation term (a = a0), leaving the level-set identity
+# chi_x = -chi_z * dS/dx (the age-0 isochrone at the surface is the surface).
 agegrad_x[rows, i0_arr] = -agegrad[rows, i0_arr]*dS_dx[i0_arr]
+
+# Upstream-born (entry node = upstream boundary): the full Eq. (17) with the
+# local derivatives at i_b, as the batch would compute it there.
 up = (in_arr == 'upstream')
 if up.any():
-    kappa_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*fct_domega_dzeta(zeta_arr, i_b))
-    agegrad_x[up, i_b] = kappa_b*(1. - (1.+mu_b)*((a[i_b]-m[i_b])*omega + m[i_b])
-                             / (a[i_b]*(omega+mu_b)))
+    om_b = fct_domega_dzeta(zeta_arr, i_b)
+    kap_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*om_b)
+    D_b = D_birth[up]
+    T2_b = -(a[i_b]*qq*Y[i_b]*H_ie[i_b])/(Q[i_b]*QH[i_b]*D_b*om_b)
+    T3_b = (-(m[i_b]*Q[i_b]-a[i_b]*Qm[i_b])*Y[i_b]/QH[i_b]**2*(1-qq/Q[i_b])
+            - fct_domega_dx(zeta_arr, i_b))*H_ie[i_b]/(om_b*D_b) \
+           + (-(1-zeta_arr)*dHie_dx[i_b])/D_b
+    if not sf_single:
+        u_dep_b = S_ie[i_b] - z_arr
+        T3_b = T3_b - np.interp(u_dep_b, v_grid, TIE[i_b])
+    T3_b = T3_b + dS_dx[i_b]
+    agegrad_x[up, i_b] = kap_b - agegrad[up, i_b]*T2_b - agegrad[up, i_b]*T3_b
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
 
