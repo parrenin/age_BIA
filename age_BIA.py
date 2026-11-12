@@ -565,6 +565,7 @@ agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 # chi_x = -chi_z * dS/dx (the age-0 isochrone at the surface is the surface).
 invtau_x[rows, i0_arr] = dS_dx[i0_arr]
 agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
+dip[rows, i0_arr] = np.degrees(np.arctan2(invtau_x[rows, i0_arr], 1./tau0_arr))
 
 # Upstream-born (entry node = upstream boundary): the full Eq. (17) with the
 # local derivatives at i_b, as the batch would compute it there.
@@ -817,7 +818,7 @@ def surf_nearest(Y):
 surf_steady_age = surf_extrap(steady_age)
 surf_tau        = surf_extrap(tau)
 surf_slope      = surf_extrap(slope)
-surf_dip = np.degrees(np.atan(surf_slope)) # The gradients have singularities at surface, so better use this.
+surf_dip = surf_extrap(dip)
 surf_agegrad = surf_nearest(agegrad)
 surf_order_factor = surf_extrap(1.+gamma_mat)
 
