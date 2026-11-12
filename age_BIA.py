@@ -543,8 +543,8 @@ slope = np.full((ntraj, len(x)), np.nan)
 dip = np.full((ntraj, len(x)), np.nan)
 zieb_iso = np.full((ntraj, len(x)), np.nan)
 ziea_iso = np.full((ntraj, len(x)), np.nan)
-agegrad = np.full((ntraj, len(x)), np.nan)
-agegrad_x = np.full((ntraj, len(x)), np.nan)
+st_agegrad = np.full((ntraj, len(x)), np.nan)
+st_agegrad_x = np.full((ntraj, len(x)), np.nan)
 gamma_mat = np.full((ntraj, len(x)), np.nan)
 
 rows = np.arange(ntraj)
@@ -569,7 +569,7 @@ D_birth = np.empty(ntraj)
 for t in range(ntraj):
     D_birth[t] = np.interp(S_ie[i0_arr[t]]-z0_arr[t], v_grid, D_col[i0_arr[t]])
 with np.errstate(invalid='ignore', divide='ignore'):
-    agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
+    st_agegrad[rows, i0_arr] = -D_birth/(a0_arr*tau0_arr)
 invtau[rows, i0_arr] = 1/tau[rows, i0_arr]
 # Initialization of the horizontal age gradient
 # Eq. (17) evaluated at the nodes where the trajectories enter the domain,
@@ -582,7 +582,7 @@ invtau[rows, i0_arr] = 1/tau[rows, i0_arr]
 # chi_x = -chi_z * dS/dx (the age-0 isochrone at the surface is the surface).
 invtau_x[rows, i0_arr] = dS_dx[i0_arr]
 with np.errstate(invalid='ignore', divide='ignore'):
-    agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
+    st_agegrad_x[rows, i0_arr] = invtau_x[rows, i0_arr]*D_birth/a0_arr
 dip[rows, i0_arr] = np.degrees(np.arctan2(invtau_x[rows, i0_arr], 1./tau0_arr))
 
 # Upstream-born (entry node = upstream boundary): the full Eq. (17) with the
@@ -602,7 +602,7 @@ if up.any():
     T3_b = T3_b + dS_dx[i_b]
     invtau_x_b = a0_arr[up]*kap_b/D_b + (1./tau0_arr[up])*(T2_b + T3_b)
     invtau_x[up, i_b] = invtau_x_b
-    agegrad_x[up, i_b] = invtau_x_b*D_b/a0_arr[up]
+    st_agegrad_x[up, i_b] = invtau_x_b*D_b/a0_arr[up]
     dip[up, i_b] = np.degrees(np.arctan2(invtau_x_b, 1./tau0_arr[up]))
 
 print('Before following trajectories:', round(time.perf_counter()-START_TIME, 4), 's.')
@@ -631,7 +631,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
             slope[idx[exits], j:] = np.nan
             zieb_iso[idx[exits], j:] = np.nan
             ziea_iso[idx[exits], j-1] = np.nan
-            agegrad[idx[exits], j:] = np.nan
+            st_agegrad[idx[exits], j:] = np.nan
             gamma_mat[idx[exits], j:] = np.nan
             idx = idx[~exits]
             if idx.size == 0:
@@ -659,7 +659,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
         invtau[idx, j] = invtau_j
         # Vertical age gradient (Eq. 14): chi_z = -(D/a0) * tau^-1
         agegrad_j = -(D/a0_arr[idx])*invtau_j        # <-- la définition manquante
-        agegrad[idx, j] = agegrad_j
+        st_agegrad[idx, j] = agegrad_j
         # Vertical thinning ratio
         tau_j = 1./invtau_j
         tau[idx, j] = tau_j
@@ -683,7 +683,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
         invtau_x[idx, j] = invtau_x_j
         # Horizontal age gradient (Eq. 17): chi_x = (D/a0) * tau_x.
         # Singular when a0 -> 0, but that is the physical chi_x.
-        agegrad_x[idx, j] = invtau_x_j*D/a0_arr[idx]
+        st_agegrad_x[idx, j] = invtau_x_j*D/a0_arr[idx]
         # --- layer dip (degrees), from the rescaled age gradient vector,
         # unwrapped along the trajectory for angle continuity:
         dip_new = np.degrees(np.arctan2(invtau_x_j, invtau_j))
@@ -714,6 +714,10 @@ else:
     for j in range(len(x)):
         Zmat[:, j] = S[j] - np.interp(S_ie[j]-z_ie[:, j], v_grid, R_col[j])
 AgeMat = np.interp(steady_age.ravel(), steady_age_R, age_R).reshape(steady_age.shape)
+Rfac = np.interp(steady_age.ravel(), steady_age_R, R).reshape(steady_age.shape)
+with np.errstate(invalid='ignore'):
+    agegrad = st_agegrad*Rfac
+    agegrad_x = st_agegrad_x*Rfac
 Xmat = np.where(np.isnan(z_ie), np.nan, x)
 Qmat = np.where(np.isnan(z_ie), np.nan, q_arr[:, None])
 # Layer dip (degrees), from the age gradient pair (always defined).
@@ -759,6 +763,7 @@ def prof_col(ii):
     pc['steady_age'] = steady_age[sel, ii]
     pc['tau'] = tau[sel, ii]
     pc['invtau'] = invtau[sel, ii]
+    pc['st_agegrad'] = st_agegrad[sel, ii]
     pc['agegrad'] = agegrad[sel, ii]
     pc['slope'] = slope[sel, ii]
     pc['dip'] = dip[sel, ii]
