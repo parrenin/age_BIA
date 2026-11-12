@@ -1415,8 +1415,8 @@ for name in ic:
         yval = pc['tau']
         xlabel = 'vertical thinning ratio (no unit)'
     for i in range(len(prof_domains)-1):
-        ax3.plot(yval[prof_domains[i]:prof_domains[i+1]],
-                 pc['z'][prof_domains[i]:prof_domains[i+1]], color='orange')
+        ax3.plot(in_window(yval)[prof_domains[i]:prof_domains[i+1]],
+                 in_window(pc['z'])[prof_domains[i]:prof_domains[i+1]], color='orange')
     if ic[name]['comp'] is not None:
         # The imported file contains the thinning ratio: convert it to
         # the plotted quantity when needed.
