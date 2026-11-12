@@ -66,7 +66,7 @@ output_fl = False
 slope_diff = False
 x_grid = {}
 z_grid = {}
-fig_ic_dip = False
+fig_ic_dip = True
 fig_ic_thinning = 'thinning'
 nb_zeta = 1001
 solid_fraction_profiles = None
@@ -1264,19 +1264,19 @@ def slope_figure(depthmode, fname):
     for sl in domain_slices:
         zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
         cp = ax2.contourf(Xmat[sl]/1000., zt, slope[sl],
-                          levels=levels_dip, cmap='PuOr')
+                          levels=levels_slope, cmap='PuOr')
     plot_unconf(ax2, depthmode)
     ax2.set_xlabel('horizontal distance (km)', fontsize=19)
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
     if depthmode:
         ax2.set_ylim(ax2.get_ylim()[::-1])
-    cb = plt.colorbar(cp, pad=0.)
+    cb = plt.colorbar(cp, pad=-0.02)
     cb.set_label(label='layer slope (no unit)', size=18)
     plot_ic(ax2, depthmode)
     savefig(fname)
 
-slope_figure(False, 'layer_dip_x_z')
-slope_figure(True, 'layer_dip_x_depth')
+slope_figure(False, 'layer_slope_x_z')
+slope_figure(True, 'layer_slope_x_depth')
 
 
 
