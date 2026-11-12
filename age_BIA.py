@@ -704,9 +704,6 @@ Qmat = np.where(np.isnan(z_ie), np.nan, q_arr[:, None])
 # through vertical tangents (+/-90 deg); it only branches at +/-180 deg
 # (horizontal overturned layers), where a future per-trajectory
 # unwrapping would make it a continuous rotation angle.
-dip = np.degrees(np.arctan2(agegrad_x, -agegrad))
-# Critical point of the age field (both gradients zero): direction undefined
-dip = np.where((agegrad == 0.) & (agegrad_x == 0.), np.nan, dip)
 if slope_diff:
     ziea_iso[:, -1] = np.nan
     ZBmat = np.full((ntraj, len(x)), np.nan)
