@@ -1270,7 +1270,7 @@ def slope_figure(depthmode, fname):
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
     if depthmode:
         ax2.set_ylim(ax2.get_ylim()[::-1])
-    cb = plt.colorbar(cp, pad=-0.06)
+    cb = plt.colorbar(cp, pad=0.)
     cb.set_label(label='layer slope (no unit)', size=18)
     plot_ic(ax2, depthmode)
     savefig(fname)
@@ -1299,7 +1299,7 @@ def dip_figure(depthmode, fname):
     ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
     if depthmode:
         ax2.set_ylim(ax2.get_ylim()[::-1])
-    cb = plt.colorbar(cp, pad=-0.06)
+    cb = plt.colorbar(cp, pad=-0.02)
     cb.set_label(label='layer dip (°)', size=18)
     plot_ic(ax2, depthmode)
     savefig(fname)
