@@ -71,6 +71,7 @@ fig_ic_thinning = 'thinning'
 nb_zeta = 1001
 solid_fraction_profiles = None
 dzie_D = 1.0
+tube_width_profiles = None
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -155,6 +156,23 @@ def fct_domega_dx(zeta, i):
 
 def fct_zeta(omega, i):
     return np.interp(omega, tab_omega[:, i], zeta_grid)
+
+def fct_y(zeta, i):
+    # Tube width shape y = Y(x, zeta) / Y^S(x) at node i
+    return np.interp(zeta, zeta_grid, y_tab[:, i])
+
+def fct_dy_dzeta(zeta, i):
+    # dy/dzeta at fixed x
+    return np.interp(zeta, zeta_grid, dy_tab[:, i])
+
+def mean_integrand(f1, f2):
+    # Geometric mean of two values of an integrand when they have the same
+    # sign (as in the original scheme), arithmetic mean otherwise: with a
+    # vertically varying tube width the integrand of gamma can change sign.
+    pos = (f1 >= 0) & (f2 >= 0)
+    neg = (f1 <= 0) & (f2 <= 0)
+    g = np.sqrt(np.abs(f1*f2))
+    return np.where(pos, g, np.where(neg, -g, 0.5*(f1+f2)))
     
 
 
@@ -249,6 +267,28 @@ elif solid_fraction is not None:
 else:
     sf_anchors.append((-np.inf, np.array([0., 10000.]), np.ones(2), np.array([0., 10000.])))
 
+# -----------------------------------------------------------------
+# Loading tube width shape profiles y(x, zeta) = Y(x, zeta) / Y^S(x)
+# -----------------------------------------------------------------
+# Each anchor is a two-column file: zeta (0 = bed, 1 = surface) and the
+# ratio Y/Y^S, which is 1 at the surface by definition. Y^S(x) itself is
+# still given by tube_width.txt.
+tw_anchors = []   # (x_km, zeta, ratio)
+if tube_width_profiles is not None:
+    xs_check = np.array([float(e['x']) for e in tube_width_profiles])
+    if np.any(np.diff(xs_check) <= 0):
+        raise ValueError('tube_width_profiles must be sorted by increasing x: '
+                         + str(list(xs_check)))
+    for e in tube_width_profiles:
+        zz, yy = np.loadtxt(datadir+e['file'], unpack=True)
+        if np.any(np.diff(zz) <= 0) or zz[0] > 1e-9 or zz[-1] < 1.-1e-9:
+            raise ValueError(e['file']+': zeta must be increasing and span [0, 1].')
+        if np.any(yy <= 0.):
+            raise ValueError(e['file']+': Y/Y^S must be strictly positive.')
+        if abs(np.interp(1., zz, yy)-1.) > 1e-6:
+            raise ValueError(e['file']+': Y/Y^S must be 1 at the surface (zeta=1).')
+        tw_anchors.append((float(e['x']), zz, yy))
+
 # -----------------------------------------------------------
 # Reading of comparison files for ice cores
 # -----------------------------------------------------------
@@ -314,6 +354,24 @@ if obs_bedrock != None:
 # Convert x in meters now
 x *= 1000
 
+# Tube width shape y(x, zeta) = Y/Y^S on the zeta grid: linear interpolation
+# in zeta (inside each anchor) then in x between anchors (constant outside).
+zeta_grid = np.linspace(0, 1, nb_zeta)
+if len(tw_anchors) == 0:
+    y_tab = np.ones((nb_zeta, len(x)))
+else:
+    xs_tw = np.array([e[0] for e in tw_anchors])
+    y_anch = np.array([np.interp(zeta_grid, e[1], e[2]) for e in tw_anchors])
+    if len(tw_anchors) == 1:
+        y_tab = np.repeat(y_anch[0][:, None], len(x), axis=1)
+    else:
+        k_tw = np.clip(np.searchsorted(xs_tw, x/1000., side='right')-1, 0, len(xs_tw)-2)
+        w_tw = np.clip((x/1000.-xs_tw[k_tw])/(xs_tw[k_tw+1]-xs_tw[k_tw]), 0., 1.)
+        y_tab = ((1.-w_tw)[:, None]*y_anch[k_tw] + w_tw[:, None]*y_anch[k_tw+1]).T
+dy_tab = np.gradient(y_tab, zeta_grid, axis=0)
+# Y (from tube_width.txt) is the surface width Y^S; the width at the bed is:
+Yb = Y * y_tab[0, :]
+
 # Computation of total flux Q
 dQdx = (x[1:]-x[:-1]) * \
     (a[:-1] * Y[:-1] +
@@ -332,10 +390,10 @@ elif Q[0] < 0:
 
 # Computation of basal melting flux Qm
 dQmdx = (x[1:]-x[:-1]) * \
-    (m[:-1] * Y[:-1] +
-     0.5 * ((m[1:]-m[:-1]) * Y[:-1] + (Y[1:]-Y[:-1])
+    (m[:-1] * Yb[:-1] +
+     0.5 * ((m[1:]-m[:-1]) * Yb[:-1] + (Yb[1:]-Yb[:-1])
             * m[:-1]) +
-     1./3 * (m[1:]-m[:-1]) * (Y[1:]-Y[:-1]))
+     1./3 * (m[1:]-m[:-1]) * (Yb[1:]-Yb[:-1]))
 dQmdx = np.insert(dQmdx, 0, Qm_left)
 Qm = np.cumsum(dQmdx)
 
@@ -486,7 +544,7 @@ in_l, z0_l, age0_l, gi0_l, tau0_l, slope0_l, zieb0_l = [], [], [], [], [], [], [
 # From the upstream border (Q[0]>0) or the second x node (Q[0]=0)
 # From the upstream border or dome, at node i_b
 mu_b = Qm[i_b]/QH[i_b]
-f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))
+f_b = H_ie[i_b]*(1+mu_b)/(a[i_b]*(tab_omega[:, i_b]+mu_b))*y_tab[:, i_b]   # Eq. (S3.4)
 # Trapezoidal primitive integrated FROM the surface (zeta=1) downwards:
 # a possible singularity at zeta=0 stays confined to the last cells.
 fs = f_b[::-1]
@@ -497,8 +555,9 @@ zeta_arr = zg[(zg < 1.) & (zg > 0.)]
 if zeta_arr.size:
     omega = fct_omega(zeta_arr, i_b)
     qq = Qm[i_b] + (Q[i_b]-Qm[i_b])*omega
+    y_arr = fct_y(zeta_arr, i_b)
     gi0 = H_ie[i_b]/a[i_b]*Q[i_b]/QH[i_b]/qq*\
-          (1/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))
+          (y_arr/fct_domega_dzeta(zeta_arr, i_b)-1/fct_domega_dzeta(1., i_b))   # Eq. (S3.6)
     age0 = np.interp(zeta_arr, zeta_grid, age_grid)
     z_arr = B[i_b] + zeta_arr*H_ie[i_b]
     nb = z_arr.size
@@ -508,7 +567,7 @@ if zeta_arr.size:
     z0_l += list(z_arr)
     age0_l += list(age0)
     gi0_l += list(gi0)
-    tau0_l += list(qq/Q[i_b])
+    tau0_l += list(qq/Q[i_b]/y_arr)   # Eq. (S3.1)
     slope0_l += [0.]*nb
     zieb0_l += [np.nan]*nb
 
@@ -590,10 +649,10 @@ dip[rows, i0_arr] = np.degrees(np.arctan2(invtau_x[rows, i0_arr], 1./tau0_arr))
 up = (in_arr == 'upstream')
 if up.any():
     om_b = fct_domega_dzeta(zeta_arr, i_b)
-    kap_b = Y[i_b]*H_ie[i_b]/(QH[i_b]*om_b)
+    kap_b = Y[i_b]*y_arr*H_ie[i_b]/(QH[i_b]*om_b)
     D_b = D_birth[up]
     T2_b = -(a[i_b]*qq*Y[i_b]*H_ie[i_b])/(Q[i_b]*QH[i_b]*D_b*om_b)
-    T3_b = (-(m[i_b]*Q[i_b]-a[i_b]*Qm[i_b])*Y[i_b]/QH[i_b]**2*(1-qq/Q[i_b])
+    T3_b = (-(m[i_b]*Yb[i_b]*Q[i_b]-a[i_b]*Y[i_b]*Qm[i_b])/QH[i_b]**2*(1-qq/Q[i_b])
             - fct_domega_dx(zeta_arr, i_b))*H_ie[i_b]/(om_b*D_b) \
            + (-(1-zeta_arr)*dHie_dx[i_b])/D_b
     if not sf_single:
@@ -643,13 +702,19 @@ with np.errstate(invalid='ignore', divide='ignore'):
         zetab = (z_ie[idx, j-1]-B[j-1])/H_ie[j-1]
         dom_dzeta = fct_domega_dzeta(zeta, j)
         dom_dzeta_b = fct_domega_dzeta(zetab, j-1)
-        kappab = Y[j-1]*H_ie[j-1]/QH[j-1]/dom_dzeta_b
-        kappa = Y[j]*H_ie[j]/QH[j]/dom_dzeta
+        y_j = fct_y(zeta, j); y_jb = fct_y(zetab, j-1)
+        dy_j = fct_dy_dzeta(zeta, j); dy_jb = fct_dy_dzeta(zetab, j-1)
+        kappab = Y[j-1]*y_jb*H_ie[j-1]/QH[j-1]/dom_dzeta_b
+        kappa = Y[j]*y_j*H_ie[j]/QH[j]/dom_dzeta
         dage = (x[j]-x[j-1]) * np.sqrt(kappa*kappab)
         steady_age[idx, j] = steady_age[idx, j-1] + dage
-        gi_j = Y[j]/QH[j]**2*H_ie[j]/dom_dzeta**3*fct_d2omega_dzeta2(zeta, j)
-        gi_jb = Y[j-1]/QH[j-1]**2*H_ie[j-1]/dom_dzeta_b**3*fct_d2omega_dzeta2(zetab, j-1)
-        gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*np.sqrt(gi_j*gi_jb)
+        # Integrand of gamma, Eq. (S1.15) with Y = Y^S y(x, zeta):
+        # Y^S H_ie/QH^2 * [ y omega'' / omega'^3 - (dy/dzeta) / omega'^2 ]
+        gi_j = Y[j]*H_ie[j]/QH[j]**2*(y_j*fct_d2omega_dzeta2(zeta, j)/dom_dzeta**3
+                                        - dy_j/dom_dzeta**2)
+        gi_jb = Y[j-1]*H_ie[j-1]/QH[j-1]**2*(y_jb*fct_d2omega_dzeta2(zetab, j-1)/dom_dzeta_b**3
+                                             - dy_jb/dom_dzeta_b**2)
+        gammaint[idx, j] = gammaint[idx, j-1] + (x[j]-x[j-1])*mean_integrand(gi_j, gi_jb)
         gam = c_gamma[idx]*gammaint[idx, j]
         gamma_mat[idx, j] = gam
         u_dep = S_ie[j] - z_ie[idx, j]
@@ -667,7 +732,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
         # Accumulation term: T2 = -(a Y^S Omega / Q) (dOmega/dz)^-1
         T2 = -(a[j]*qq*Y[j]*H_ie[j]) / (Q[j]*QH[j]*D*dom_dzeta)
         # iso-Omega slope: T3 = (dz/dx)|_Omega (melting, flow, geometric, firn)
-        T3 = (-(m[j]*Q[j]-a[j]*Qm[j]) * Y[j]/QH[j]**2 * (1-qq/Q[j])
+        T3 = (-(m[j]*Yb[j]*Q[j]-a[j]*Y[j]*Qm[j]) / QH[j]**2 * (1-qq/Q[j])
               - fct_domega_dx(zeta, j)) * H_ie[j]/(dom_dzeta*D) \
              + (-(1-zeta)*dHie_dx[j]) / D
         if not sf_single:
