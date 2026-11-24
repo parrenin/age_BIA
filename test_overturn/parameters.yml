@@ -12,7 +12,9 @@ fig_age_iso: [1, 2, 5, 10, 20, 30, 40, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64]
 step_traj: 10
 fig_format: 'svg'
 fig_ic_dip: True
+fig_ic_thinning: 'invthinning'
 fig_age_maxrange: 200.
+fig_thinning: False
 tube_width_profiles:
     - "x": 5.
       "file": "tube_width_profile.txt"

@@ -49,6 +49,7 @@ fig_agegrad_maxrange = None
 fig_invtau_maxrange = None
 fig_slope_maxrange = None
 fig_dip_maxrange = None
+fig_thinning = True
 scaling_q = 10.
 ic = {}
 color_core = 'r'
@@ -1209,6 +1210,7 @@ def order_factor_figure(depthmode, fname):
 
 order_factor_figure(False, 'order_factor_x_z')
 order_factor_figure(True, 'order_factor_x_depth')
+print('After order figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
 # Vertical age gradient
@@ -1241,6 +1243,7 @@ def agegrad_figure(depthmode, fname):
 
 agegrad_figure(False, 'age_gradient_x_z')
 agegrad_figure(True, 'age_gradient_x_depth')
+print('After age gradient figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
 # 7-8. Thinning
@@ -1276,8 +1279,9 @@ def thinning_figure(depthmode, fname):
     plot_ic(ax2, depthmode)
     savefig(fname)
 
-thinning_figure(False, 'thinning_x_z')
-thinning_figure(True, 'thinning_x_depth')
+if fig_thinning:
+    thinning_figure(False, 'thinning_x_z')
+    thinning_figure(True, 'thinning_x_depth')
 print('After thinning figures:', round(time.perf_counter()-START_TIME, 4), 's.')
 
 # ---------------------------------------------------------
