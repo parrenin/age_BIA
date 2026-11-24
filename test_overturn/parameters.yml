@@ -6,7 +6,7 @@ x_grid: #depth grid for the age calculation
 z_grid:
   type: 'regular'
   nb_steps: 100  
-Q_left: 1.
+Q_left: 10.
 Qm_left: 0.1
 fig_age_iso: [1, 2, 5, 10, 20, 30, 40, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64]
 step_traj: 10
@@ -18,6 +18,6 @@ tube_width_profiles:
       "file": "tube_width_profile.txt"
 ic:
     "IC3":
-        "x": 5.  # X coordinate of the drilling, in km
-        "max_depth": 990.
+        "x": 9.  # X coordinate of the drilling, in km
+        "max_depth": 950.
         "comp": Null
