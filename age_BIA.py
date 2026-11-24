@@ -271,7 +271,7 @@ for name in ic:
             ic[name]['cp_dip'] = np.degrees(np.arctan(ic[name]['cp_slope']))
         if 'dip' in df.columns and 'slope' not in df.columns:
             with np.errstate(divide='ignore'):
-                ic[name]['cp_slope'] = np.degrees(np.tan(ic[name]['cp_dip']))
+                ic[name]['cp_slope'] = np.degrees(np.tan(np.radians(ic[name]['cp_dip'])))
         
 
 # -----------------------------------------------------------
@@ -398,7 +398,7 @@ else:
     G = 1./D_col
     Gx = np.zeros_like(G)
     Gx[1:-1] = (G[2:]-G[:-2])/(x[2:]-x[:-2])[:, None]
-    Gx[0] = (G[1]-G[0])/x[1]-x[0]
+    Gx[0] = (G[1]-G[0])/(x[1]-x[0])
     Gx[-1] = (G[-1]-G[-2])/(x[-1]-x[-2])
     TIE = np.zeros_like(G)
     TIE[:, 1:] = np.cumsum(0.5*(Gx[:, 1:]+Gx[:, :-1])*np.diff(v_grid)[None, :], axis=1)
@@ -760,6 +760,7 @@ def prof_col(ii):
     sel = (i0_arr == ii) | advanced[:, ii]
     pc = {}
     pc['z_ie'] = z_ie[sel, ii]
+    pc['z'] = S[ii]-np.interp(S_ie[ii]-pc['z_ie'], v_grid, R_col[ii])
     pc['steady_age'] = steady_age[sel, ii]
     pc['tau'] = tau[sel, ii]
     pc['invtau'] = invtau[sel, ii]
@@ -789,7 +790,6 @@ def prof_col(ii):
             pc['zb_iso'] = np.nan*np.ones_like(pc['z'])
             pc['za_iso'] = np.nan*np.ones_like(pc['z'])
             pc['slope_diff'] = np.nan*np.ones_like(pc['z'])
-    pc['z'] = S[ii]-np.interp(S_ie[ii]-pc['z_ie'], v_grid, R_col[ii])
     pc['age'] = np.interp(pc['steady_age'], steady_age_R, age_R)
     if len(accu_starts) > 1:
         adv_sel = advanced[:, ii] & is_unconf
