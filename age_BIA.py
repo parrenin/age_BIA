@@ -1505,13 +1505,13 @@ for name in ic:
         else:
             linthresh = 1.
         ax3.set_xscale('symlog', linthresh=linthresh, linscale=1.)
-    ax3.set_xlim(left=0)
     
     ax3.set_xlabel(xlabel, color='orange', fontsize=15)
     ax3.spines['top'].set_color('orange')
     ax3.spines['top'].set_position(('axes', 1.1))
     ax3.tick_params(axis='x', colors='orange')
-    ax3.set_xlim(left=0)
+    if fig_ic_thinning == 'thinning':
+        ax3.set_xlim(left=0)
 
     ax4 = ax.twiny()
     if fig_ic_dip:
