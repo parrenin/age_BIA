@@ -73,6 +73,9 @@ nb_zeta = 1001
 solid_fraction_profiles = None
 dzie_D = 1.0
 tube_width_profiles = None
+fig_tube_3d_view = [25., -60.]        # elevation and azimuth of the 3D tube view (deg)
+fig_tube_3d_aspect = [1., 0.3, 0.3]   # box aspect (x, lateral, z) of the 3D tube view
+fig_tube_3d_traj = True               # draw the trajectories in the 3D tube view
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -1415,6 +1418,72 @@ def q_figure(depthmode, fname):
 
 q_figure(False, 'stream_function_x_z')
 q_figure(True, 'stream_function_x_depth')
+
+# ---------------------------------------------------------
+# 3D view of the flow tube
+# ---------------------------------------------------------
+
+def tube_3d_figure(fname):
+    # The model only knows the width Y(x, zeta) of the tube, not its lateral
+    # position: the tube is drawn symmetric about the flow line (lateral
+    # coordinate w = 0). The three axes are not to scale (see box aspect).
+    ix = np.unique(np.round(np.linspace(0, len(x)-1, min(len(x), 150))).astype(int))
+    nzp = 31
+    zeta_p = np.linspace(0., 1., nzp)
+    X3 = np.empty((nzp, ix.size)); Z3 = np.empty_like(X3); Y3 = np.empty_like(X3)
+    for k, j in enumerate(ix):
+        X3[:, k] = x[j]/1000.
+        # Same ice-equivalent -> real elevation conversion as for Zmat
+        Z3[:, k] = S[j] - np.interp(S_ie[j]-(B[j]+zeta_p*H_ie[j]), v_grid, R_col[j])
+        Y3[:, k] = Y[j]*np.interp(zeta_p, zeta_grid, y_tab[:, j])
+    if Y3.max() > Y3.min():
+        norm_w = Normalize(vmin=Y3.min(), vmax=Y3.max())
+    else:   # constant width: centred colour scale
+        norm_w = Normalize(vmin=0.5*Y3.min(), vmax=1.5*Y3.min())
+    cmap_w = plt.cm.viridis
+    fcol = cmap_w(norm_w(Y3))
+    fig = plt.figure(figsize=(13, 8))
+    ax = fig.add_subplot(projection='3d')
+    kw = dict(rstride=1, cstride=1, edgecolor='none', linewidth=0, antialiased=True, shade=False, alpha=0.5)
+    ax.plot_surface(X3, Y3/2., Z3, facecolors=fcol, **kw)     # right wall
+    ax.plot_surface(X3, -Y3/2., Z3, facecolors=fcol, **kw)    # left wall
+    # Surface and bed ribbons
+    for row, col in ((-1, 'white'), (0, 'grey')):
+        ax.plot_surface(X3[[row, row], :], np.vstack((-Y3[row]/2., Y3[row]/2.)),
+                        Z3[[row, row], :], color=col, edgecolor='none', linewidth=0,
+                        antialiased=True, shade=False, alpha=0.6)
+    # Edges of the tube (surface and bed lines) and cross sections
+    for row in (0, -1):
+        for sgn in (-1, 1):
+            ax.plot(X3[row], sgn*Y3[row]/2., Z3[row], color='k', linewidth=1.2)
+    for k in np.linspace(0, ix.size-1, 9).astype(int):
+        wl = np.concatenate((Y3[:, k]/2., -Y3[::-1, k]/2., [Y3[0, k]/2.]))
+        zl = np.concatenate((Z3[:, k], Z3[::-1, k], [Z3[0, k]]))
+        ax.plot(X3[0, k]*np.ones_like(wl), wl, zl, color='k', linewidth=0.8)
+    if fig_tube_3d_traj:
+        for t in traj_sel:
+            ax.plot(Xmat[t]/1000., np.zeros_like(Xmat[t]), Zmat[t], linewidth=0.5,
+                    color='k' if in_arr[t] == 'upstream' else 'b', alpha=0.6)
+    for name in ic:
+        ax.plot(ic[name]['XX'], np.zeros(2), ic[name]['ZZ'], linewidth=lw_core,
+                color=color_core, linestyle=ls_core)
+    ax.set_xlabel('horizontal distance (km)', fontsize=14, labelpad=14)
+    ax.set_ylabel('lateral position (m)', fontsize=14, labelpad=10)
+    ax.set_zlabel('elevation (m)', fontsize=14, labelpad=10)
+    wmax = max(Y3.max()/2., 1e-9)*1.05
+    ax.set_ylim(-wmax, wmax)
+    ax.set_box_aspect(fig_tube_3d_aspect, zoom=1.05)
+    ax.yaxis.set_major_locator(plt.MaxNLocator(3))
+    ax.view_init(elev=fig_tube_3d_view[0], azim=fig_tube_3d_view[1])
+    sm = plt.cm.ScalarMappable(cmap=cmap_w, norm=norm_w)
+    sm.set_array([])
+    fig.subplots_adjust(left=0.0, right=0.72)
+    cax = fig.add_axes([0.74, 0.3, 0.015, 0.4])
+    cb = fig.colorbar(sm, cax=cax)
+    cb.set_label(label='tube width Y (m)', size=16)
+    savefig(fname)
+
+tube_3d_figure('tube_3d')
 
 # ---------------------------------------------------------
 # 13. Ice ores
