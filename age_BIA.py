@@ -15,7 +15,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-from matplotlib.colors import SymLogNorm, Normalize
+from matplotlib.colors import SymLogNorm, Normalize, LogNorm
 import time
 import os
 import resource
@@ -76,6 +76,9 @@ tube_width_profiles = None
 fig_tube_3d_view = [25., -60.]        # elevation and azimuth of the 3D tube view (deg)
 fig_tube_3d_aspect = [1., 0.3, 0.3]   # box aspect (x, lateral, z) of the 3D tube view
 fig_tube_3d_traj = True               # draw the trajectories in the 3D tube view
+fig_tube_width_scale = 'auto'         # colour/axis scale of the tube width: 'auto', 'linear', 'log' or 'symlog'
+fig_tube_width_maxrange = None        # optional upper cap of the tube width scale (m)
+scaling_width = 100.                  # symlog: linear range below max width / scaling_width
 
 yamls = open(datadir+'parameters.yml').read()
 para = yaml.load(yamls, Loader=yaml.FullLoader)
@@ -1420,6 +1423,85 @@ q_figure(False, 'stream_function_x_z')
 q_figure(True, 'stream_function_x_depth')
 
 # ---------------------------------------------------------
+# Tube width
+# ---------------------------------------------------------
+
+# Width Y(x, zeta) = Y^S(x) y(x, zeta) along the trajectories
+Ymat = np.full_like(z_ie, np.nan)
+for j in range(len(x)):
+    Ymat[:, j] = Y[j]*np.interp((z_ie[:, j]-B[j])/H_ie[j], zeta_grid, y_tab[:, j])
+
+def tube_width_norm():
+    # Scale from the whole tube (all x, from the bed to the surface), shared
+    # by the 2D and 3D figures. 'auto': logarithmic when the width varies by
+    # more than a factor 20 (e.g. exponential widening on a ridge), symlog
+    # when it reaches zero, linear otherwise.
+    vals = (Y[None, :]*y_tab).ravel()
+    vals = vals[np.isfinite(vals)]
+    vmin, vmax = vals.min(), vals.max()
+    if fig_tube_width_maxrange is not None:
+        vmax = fig_tube_width_maxrange
+    scale = fig_tube_width_scale
+    if scale == 'auto':
+        if vmin <= 0.:
+            scale = 'symlog'
+        elif vmax/vmin >= 20.:
+            scale = 'log'
+        else:
+            scale = 'linear'
+    if scale == 'log' and vmin <= 0.:
+        print('Tube width reaches zero: the logarithmic scale is replaced by symlog.')
+        scale = 'symlog'
+    linthresh = vmax/scaling_width
+    if scale == 'log':
+        norm = LogNorm(vmin=vmin, vmax=vmax)
+    elif scale == 'symlog':
+        norm = SymLogNorm(linthresh=linthresh, linscale=1, vmin=min(vmin, 0.), vmax=vmax)
+    else:
+        if vmax > vmin:
+            norm = Normalize(vmin=vmin, vmax=vmax)
+        else:   # constant width: centred colour scale
+            norm = Normalize(vmin=0.5*vmin, vmax=1.5*vmin)
+    return norm, scale, linthresh
+
+norm_width, width_scale, width_linthresh = tube_width_norm()
+if width_scale == 'linear':
+    levels_width = np.linspace(norm_width.vmin, norm_width.vmax, 100)
+else:
+    levels_width = norm_width.inverse(np.linspace(0., 1., 100))
+
+def tube_width_figure(depthmode, fname):
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, constrained_layout=True,
+                                   figsize=(15, 7), gridspec_kw={'height_ratios': [3, 7]})
+    if width_scale == 'log':
+        yfix = lambda ax: ax.set_yscale('log')
+    elif width_scale == 'symlog':
+        yfix = lambda ax: ax.set_yscale('symlog', linthresh=width_linthresh)
+    else:
+        yfix = None
+    top_accu(ax1, Y, 'surface tube width (m)', yscale_fix=yfix)
+    bed_panel(ax2, depthmode)
+    for sl in domain_slices:
+        zt = (S[None, :]-Zmat[sl]) if depthmode else Zmat[sl]
+        ax2.contourf(Xmat[sl]/1000., zt, Ymat[sl], levels=levels_width,
+                     cmap='viridis', norm=norm_width, extend='max')
+    plot_unconf(ax2, depthmode)
+    plot_comp_unconf(ax2, depthmode)
+    ax2.set_xlabel('horizontal distance (km)', fontsize=19)
+    ax2.set_ylabel('depth (m)' if depthmode else 'elevation (m)', fontsize=19)
+    if depthmode:
+        ax2.set_ylim(ax2.get_ylim()[::-1])
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=norm_width)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax2, pad=-0.02)
+    cb.set_label(label='tube width Y (m)', size=18)
+    plot_ic(ax2, depthmode)
+    savefig(fname)
+
+tube_width_figure(False, 'tube_width_x_z')
+tube_width_figure(True, 'tube_width_x_depth')
+
+# ---------------------------------------------------------
 # 3D view of the flow tube
 # ---------------------------------------------------------
 
@@ -1436,10 +1518,7 @@ def tube_3d_figure(fname):
         # Same ice-equivalent -> real elevation conversion as for Zmat
         Z3[:, k] = S[j] - np.interp(S_ie[j]-(B[j]+zeta_p*H_ie[j]), v_grid, R_col[j])
         Y3[:, k] = Y[j]*np.interp(zeta_p, zeta_grid, y_tab[:, j])
-    if Y3.max() > Y3.min():
-        norm_w = Normalize(vmin=Y3.min(), vmax=Y3.max())
-    else:   # constant width: centred colour scale
-        norm_w = Normalize(vmin=0.5*Y3.min(), vmax=1.5*Y3.min())
+    norm_w = norm_width
     cmap_w = plt.cm.viridis
     fcol = cmap_w(norm_w(Y3))
     fig = plt.figure(figsize=(13, 8))
